@@ -99,25 +99,6 @@ function updateLoanChart(labels, dataPoints) {
   });
   document.getElementById("loanChart").style.display = "block";
 }
-function updateSWPPieChart(withdrawn, finalPortfolio) {
-  // Create a pie chart showing withdrawn vs. current investment
-  const ctx = document.getElementById("swpPieChart").getContext("2d");
-  if (window.swpPieChart) window.swpPieChart.destroy();
-  window.swpPieChart = new Chart(ctx, {
-    type: "pie",
-    data: {
-      labels: ["Withdrawn", "Current Investment"],
-      datasets: [{
-        data: [withdrawn, finalPortfolio],
-        backgroundColor: ["#FF6600", "#0077CC"]
-      }]
-    },
-    options: {
-      plugins: { legend: { labels: { color: "#222" } } }
-    }
-  });
-  document.getElementById("swpPieChart").style.display = "block";
-}
 
 // ====================================
 // Mutual Fund List & Filtering for Mobile
@@ -298,27 +279,36 @@ document.getElementById("sipType").addEventListener("change", function() {
 });
 
 // ====================================
-// SWP Calculator
+// SWP Calculator (Updated)
 // ====================================
 function calculateSWP(navData, startDateStr, endDateStr, initialPortfolio, withdrawal) {
   let currentPortfolio = initialPortfolio;
-  const startDate = parseDate(startDateStr), endDate = parseDate(endDateStr);
+  const startDate = parseDate(startDateStr),
+        endDate = parseDate(endDateStr);
   let previousNAV = getNAVForDate(navData, formatDate(startDate));
-  let currentDate = new Date(startDate), monthCount = 0;
+  let currentDate = new Date(startDate);
+  
+  // Simulate monthly withdrawals using historical NAVs.
   while (currentDate <= endDate) {
     const dateStr = formatDate(currentDate);
     const currentNAV = getNAVForDate(navData, dateStr);
-    currentPortfolio = currentPortfolio * (currentNAV / previousNAV);
-    currentPortfolio -= withdrawal;
+    currentPortfolio = currentPortfolio * (currentNAV / previousNAV) - withdrawal;
     previousNAV = currentNAV;
-    monthCount++;
     currentDate.setMonth(currentDate.getMonth() + 1);
   }
-  const totalYears = (endDate - startDate) / (365.25 * 24 * 3600 * 1000);
-  const CAGR = Math.pow(currentPortfolio / initialPortfolio, 1 / totalYears) - 1;
+  
+  // New SWP return calculation: Total Return = Final - Initial
   const totalReturn = currentPortfolio - initialPortfolio;
   const returnPct = (totalReturn / initialPortfolio) * 100;
-  return { finalPortfolio: currentPortfolio.toFixed(2), totalReturn: totalReturn.toFixed(2), CAGR: (CAGR * 100).toFixed(2), returnPct: returnPct.toFixed(2) };
+  const totalYears = (endDate - startDate) / (365.25 * 24 * 3600 * 1000);
+  const CAGR = Math.pow(currentPortfolio / initialPortfolio, 1 / totalYears) - 1;
+  
+  return {
+    finalPortfolio: currentPortfolio.toFixed(2),
+    totalReturn: totalReturn.toFixed(2),
+    CAGR: (CAGR * 100).toFixed(2),
+    returnPct: returnPct.toFixed(2)
+  };
 }
 document.getElementById("calcSWP").addEventListener("click", function () {
   const fundId = getSelectedFundId();
@@ -336,32 +326,38 @@ document.getElementById("calcSWP").addEventListener("click", function () {
          <p>Total Return: ₹${result.totalReturn}</p>
          <p>CAGR: ${result.CAGR}%</p>
          <p>Return (%): ${result.returnPct}%</p>`;
-      // Update a pie chart: withdrawn = (initialPortfolio + withdrawal*monthCount - currentPortfolio)? 
-      // For simplicity, we show portions: current vs. initial.
-      updateSWPPieChart(initialPortfolio - result.totalReturn, result.finalPortfolio);
     })
     .catch(err => {
       console.error("Error fetching historical NAV data for SWP:", err);
       document.getElementById("swpResult").innerHTML = `<p>Error fetching data. Please try again.</p>`;
     });
+  
+  // (Optional: Remove or update pie chart code if needed)
 });
 
 // ====================================
 // Lumpsum Calculator
 // ====================================
 function calculateLumpsum(navData, startDateStr, endDateStr, lumpsumAmount) {
-  const startDate = parseDate(startDateStr), endDate = parseDate(endDateStr);
+  const startDate = parseDate(startDateStr),
+        endDate = parseDate(endDateStr);
   const startNAV = getNAVForDate(navData, formatDate(startDate));
   const endNAV = getNAVForDate(navData, formatDate(endDate));
   const finalValue = lumpsumAmount * (endNAV / startNAV);
   const totalYears = (endDate - startDate) / (365.25 * 24 * 3600 * 1000);
   const CAGR = Math.pow(finalValue / lumpsumAmount, 1 / totalYears) - 1;
   const returnPct = ((finalValue - lumpsumAmount) / lumpsumAmount) * 100;
-  return { finalValue: finalValue.toFixed(2), CAGR: (CAGR * 100).toFixed(2), returnPct: returnPct.toFixed(2) };
+  return {
+    finalValue: finalValue.toFixed(2),
+    CAGR: (CAGR * 100).toFixed(2),
+    returnPct: returnPct.toFixed(2)
+  };
 }
 function updateLumpsumChart(navData, startDateStr, endDateStr, lumpsumAmount) {
-  let startDate = parseDate(startDateStr), endDate = parseDate(endDateStr);
-  const dates = [], portfolioArr = [];
+  let startDate = parseDate(startDateStr),
+      endDate = parseDate(endDateStr);
+  const dates = [],
+        portfolioArr = [];
   let currentDate = new Date(startDate);
   const startNAV = getNAVForDate(navData, formatDate(startDate));
   let units = lumpsumAmount / startNAV;
@@ -557,7 +553,6 @@ function calculateRetirementCorpus(currentSavings, monthlyContribution, years, s
     corpusFromContributions += contribution * Math.pow(1 + r, n - m);
   }
   let totalCorpus = corpusFromSavings + corpusFromContributions;
-  // Optional: if inflation rate is provided, adjust corpus to today's value
   totalCorpus = inflationRate ? totalCorpus / Math.pow(1 + (inflationRate / 100) / 12, n) : totalCorpus;
   return totalCorpus;
 }
@@ -682,10 +677,6 @@ document.querySelectorAll(".toggle-btn").forEach(btn => {
   btn.addEventListener("click", function() {
     const targetId = this.getAttribute("data-target");
     const content = document.getElementById(targetId);
-    if (content.style.display === "none" || content.style.display === "") {
-      content.style.display = "block";
-    } else {
-      content.style.display = "none";
-    }
+    content.style.display = (content.style.display === "block") ? "none" : "block";
   });
 });
