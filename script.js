@@ -118,7 +118,7 @@ function filterFundList(query) {
   const fundList = document.getElementById("fundList");
   fundList.innerHTML = "";
   const filtered = allFunds.filter(fund => fund.schemeName.toLowerCase().includes(query.toLowerCase()));
-  const limited = filtered.slice(0, 100);
+  const limited = filtered.slice(0, 10);
   limited.forEach(fund => {
     const option = document.createElement("option");
     option.value = fund.schemeName;
