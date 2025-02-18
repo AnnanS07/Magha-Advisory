@@ -7,7 +7,6 @@ let allFunds = []; // Global store for mutual fund data
 // ====================================
 // Helper Functions
 // ====================================
-
 function parseDate(str) {
   if (/^\d{2}-\d{2}-\d{4}$/.test(str)) {
     str = convertAPIDate(str);
@@ -48,7 +47,7 @@ function getNAVForDate(navData, dateStr) {
   return parseFloat(navData[0].nav);
 }
 
-// Format numbers using Indian numbering (e.g., 1,23,456)
+// Format numbers using Indian numbering (e.g., 1,23,456.00)
 function formatIndianCurrency(num) {
   let x = Number(num).toFixed(2);
   let parts = x.split(".");
@@ -72,22 +71,8 @@ function updateSIPChart(labels, investedData, portfolioData) {
     data: {
       labels: labels,
       datasets: [
-        {
-          label: "Total Invested",
-          data: investedData,
-          borderColor: "#0077CC",
-          backgroundColor: "rgba(0,119,204,0.2)",
-          fill: false,
-          tension: 0.1
-        },
-        {
-          label: "Portfolio Value",
-          data: portfolioData,
-          borderColor: "#FF6600",
-          backgroundColor: "rgba(255,102,0,0.2)",
-          fill: false,
-          tension: 0.1
-        }
+        { label: "Total Invested", data: investedData, borderColor: "#0077CC", backgroundColor: "rgba(0,119,204,0.2)", fill: false, tension: 0.1 },
+        { label: "Portfolio Value", data: portfolioData, borderColor: "#FF6600", backgroundColor: "rgba(255,102,0,0.2)", fill: false, tension: 0.1 }
       ]
     },
     options: {
@@ -109,14 +94,7 @@ function updateLumpsumChart(labels, portfolioData) {
     data: {
       labels: labels,
       datasets: [
-        {
-          label: "Portfolio Value",
-          data: portfolioData,
-          borderColor: "#FF6600",
-          backgroundColor: "rgba(255,102,0,0.2)",
-          fill: false,
-          tension: 0.1
-        }
+        { label: "Portfolio Value", data: portfolioData, borderColor: "#FF6600", backgroundColor: "rgba(255,102,0,0.2)", fill: false, tension: 0.1 }
       ]
     },
     options: {
@@ -138,14 +116,7 @@ function updateLoanChart(labels, dataPoints) {
     data: {
       labels: labels,
       datasets: [
-        {
-          label: "EMI Variation",
-          data: dataPoints,
-          borderColor: "#0077CC",
-          backgroundColor: "rgba(0,119,204,0.2)",
-          fill: false,
-          tension: 0.1
-        }
+        { label: "EMI Variation", data: dataPoints, borderColor: "#0077CC", backgroundColor: "rgba(0,119,204,0.2)", fill: false, tension: 0.1 }
       ]
     },
     options: {
@@ -159,8 +130,7 @@ function updateLoanChart(labels, dataPoints) {
   document.getElementById("loanChart").style.display = "block";
 }
 
-function updateSWPPieChart(totalWithdrawn, finalPortfolio) {
-  // Create a pie chart showing total withdrawals vs. current portfolio value
+function updateSWPPieChart(totalWithdrawals, finalPortfolio) {
   const ctx = document.getElementById("swpPieChart").getContext("2d");
   if (swpPieChart) swpPieChart.destroy();
   swpPieChart = new Chart(ctx, {
@@ -168,7 +138,7 @@ function updateSWPPieChart(totalWithdrawn, finalPortfolio) {
     data: {
       labels: ["Total Withdrawals", "Current Portfolio"],
       datasets: [{
-        data: [totalWithdrawn, finalPortfolio],
+        data: [totalWithdrawals, finalPortfolio],
         backgroundColor: ["#FF6600", "#0077CC"]
       }]
     },
@@ -380,7 +350,7 @@ function calculateSWP(navData, startDateStr, endDateStr, initialPortfolio, withd
     previousNAV = currentNAV;
     currentDate.setMonth(currentDate.getMonth() + 1);
   }
-  // Now: Total Return = Final Portfolio - Initial Investment
+  // Total return now calculated as Final - Initial
   const totalReturn = currentPortfolio - initialPortfolio;
   const returnPct = (totalReturn / initialPortfolio) * 100;
   const totalYears = (endDate - startDate) / (365.25 * 24 * 3600 * 1000);
@@ -461,7 +431,6 @@ document.getElementById("calcLumpsum").addEventListener("click", function () {
          <p>Final Value: ${formatIndianCurrency(result.finalValue)}</p>
          <p>CAGR: ${result.CAGR}%</p>
          <p>Return (%): ${result.returnPct}%</p>`;
-      // Prepare chart data
       let labels = [];
       let portfolioArr = [];
       let currentDate = new Date(parseDate(startDate));
@@ -486,7 +455,6 @@ document.getElementById("calcLumpsum").addEventListener("click", function () {
 // ====================================
 // Goal Based Planner Calculator (Independent)
 // ====================================
-// (Note: To convert radio options to buttons, update your HTML accordingly and add active styles)
 function simulateSIPForGoal(navData, startDate, endDate, initialSIP, stepUpPercent) {
   let totalInvested = 0, totalUnits = 0;
   let currentDate = new Date(startDate);
@@ -598,10 +566,28 @@ document.getElementById("calcGoal").addEventListener("click", function () {
 });
   
 // ====================================
-// Dynamic UI for Goal Based Planner (Buttons instead of circles)
+// Dynamic UI for Goal Based Planner Options
 // ====================================
-// (If you update your HTML to use buttons for these options, add event listeners to add an "active" class, etc.)
-// For now, this section assumes the HTML is updated accordingly.
+document.querySelectorAll('input[name="goalOption"]').forEach(radio => {
+  radio.addEventListener("change", function() {
+    const mode = this.value;
+    document.getElementById("investmentInputs").style.display = (mode === "investment") ? "block" : "none";
+    document.getElementById("timeInputs").style.display = (mode === "time") ? "block" : "none";
+    document.getElementById("combinationInputs").style.display = (mode === "combination") ? "block" : "none";
+  });
+});
+document.getElementById("comboChoice").addEventListener("change", function() {
+  if (this.value === "lumpsum") {
+    document.getElementById("comboLumpsum").style.display = "block";
+    document.getElementById("comboSIP").style.display = "none";
+  } else if (this.value === "sip") {
+    document.getElementById("comboLumpsum").style.display = "none";
+    document.getElementById("comboSIP").style.display = "block";
+  }
+});
+document.getElementById("investmentMode").addEventListener("change", function() {
+  document.getElementById("goalSipInputs").style.display = this.value === "sip" ? "block" : "none";
+});
 
 // ====================================
 // Loan Calculator
@@ -621,8 +607,8 @@ function calculateLoanTenure(loanAmount, annualInterestRate, EMI) {
 }
 function calculateLoanRate(loanAmount, EMI, tenureYears) {
   const n = tenureYears * 12;
-  let low = 0, high = 1, mid, iterations = 20;
-  for (let i = 0; i < iterations; i++) {
+  let low = 0, high = 1, mid;
+  for (let i = 0; i < 20; i++) {
     mid = (low + high) / 2;
     const EMIcalc = loanAmount * mid * Math.pow(1 + mid, n) / (Math.pow(1 + mid, n) - 1);
     if (EMIcalc > EMI) {
@@ -701,12 +687,14 @@ document.querySelectorAll('input[name="loanMode"]').forEach(radio => {
 });
 
 // ====================================
-// Toggle Button Functionality
+// Toggle Button Functionality (Fixed)
 // ====================================
 document.querySelectorAll(".toggle-btn").forEach(btn => {
   btn.addEventListener("click", function() {
     const targetId = this.getAttribute("data-target");
     const content = document.getElementById(targetId);
-    content.style.display = (content.style.display === "block") ? "none" : "block";
+    // Use computed style to check current display
+    const currentDisplay = window.getComputedStyle(content).display;
+    content.style.display = (currentDisplay === "none") ? "block" : "none";
   });
 });
