@@ -1,10 +1,8 @@
 // ====================================
 // Global Variables for Charts and Funds
 // ====================================
-let sipChart;
-let lumpsumChart;
-let loanChart;  // For loan illustration
-let allFunds = [];  // Will store all mutual fund data
+let sipChart, lumpsumChart, loanChart;
+let allFunds = []; // Store full mutual fund list
 
 // ====================================
 // Helper Functions
@@ -17,19 +15,16 @@ function parseDate(str) {
   if (isNaN(d.getTime())) console.error("Invalid date string:", str);
   return d;
 }
-
 function formatDate(date) {
   if (!date || isNaN(date.getTime())) return "";
   return date.toISOString().split('T')[0];
 }
-
 function convertAPIDate(apiDateStr) {
   if (!apiDateStr || typeof apiDateStr !== "string") return "";
   const parts = apiDateStr.split("-");
   if (parts.length !== 3) return "";
   return `${parts[2]}-${parts[1]}-${parts[0]}`;
 }
-
 function normalizeData(data) {
   if (Array.isArray(data)) return data;
   if (typeof data === "object" && data !== null && data.data && Array.isArray(data.data)) {
@@ -37,7 +32,6 @@ function normalizeData(data) {
   }
   throw new Error("Invalid data structure received from API");
 }
-
 function getNAVForDate(navData, dateStr) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) dateStr = convertAPIDate(dateStr);
   let exact = navData.find(entry => entry.date === dateStr);
@@ -68,7 +62,6 @@ function updateSIPChart(labels, investedData, portfolioData) {
     }
   });
 }
-
 function updateLumpsumChart(dates, portfolioData) {
   const ctx = document.getElementById("lumpsumChart").getContext("2d");
   if (lumpsumChart) lumpsumChart.destroy();
@@ -86,7 +79,6 @@ function updateLumpsumChart(dates, portfolioData) {
     }
   });
 }
-
 function updateLoanChart(labels, dataPoints) {
   const ctx = document.getElementById("loanChart").getContext("2d");
   if (loanChart) loanChart.destroy();
@@ -106,32 +98,27 @@ function updateLoanChart(labels, dataPoints) {
 }
 
 // ====================================
-// Mutual Fund List & Filtering (for Mobile Performance)
+// Mutual Fund List & Filtering for Mobile
 // ====================================
 function populateFundList() {
   fetch("https://api.mfapi.in/mf")
     .then(response => response.json())
     .then(data => {
-      // Store full list in global variable
       allFunds = data.map(fund => {
         let schemeName = fund.schemeName || (fund.meta && fund.meta.scheme_name);
         let schemeCode = fund.schemeCode || (fund.meta && fund.meta.scheme_code);
         return { schemeName, schemeCode };
       }).filter(fund => fund.schemeName && fund.schemeCode);
-      // Initially, show a filtered list with empty query
       filterFundList("");
     })
     .catch(err => console.error("Error populating fund list:", err));
 }
 document.addEventListener("DOMContentLoaded", populateFundList);
-
 function filterFundList(query) {
   const fundList = document.getElementById("fundList");
   fundList.innerHTML = "";
-  // Filter the global fund list based on the query
   const filtered = allFunds.filter(fund => fund.schemeName.toLowerCase().includes(query.toLowerCase()));
-  // Limit to 100 results for performance
-  const limited = filtered.slice(0, 10);
+  const limited = filtered.slice(0, 100);
   limited.forEach(fund => {
     const option = document.createElement("option");
     option.value = fund.schemeName;
@@ -139,11 +126,9 @@ function filterFundList(query) {
     fundList.appendChild(option);
   });
 }
-
 document.getElementById("fundNameInput").addEventListener("input", function() {
   filterFundList(this.value);
 });
-
 function getSelectedFundId() {
   const input = document.getElementById("fundNameInput");
   const datalist = document.getElementById("fundList");
@@ -668,6 +653,21 @@ document.querySelectorAll('input[name="loanMode"]').forEach(radio => {
       document.getElementById("loanInterestGroup").style.display = "none";
       document.getElementById("loanTenureGroup").style.display = "block";
       document.getElementById("loanEMIGroup").style.display = "block";
+    }
+  });
+});
+
+// ====================================
+// Toggle Button Functionality
+// ====================================
+document.querySelectorAll(".toggle-btn").forEach(btn => {
+  btn.addEventListener("click", function() {
+    const targetId = this.getAttribute("data-target");
+    const content = document.getElementById(targetId);
+    if (content.style.display === "none" || content.style.display === "") {
+      content.style.display = "block";
+    } else {
+      content.style.display = "none";
     }
   });
 });
