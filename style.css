@@ -33,20 +33,15 @@ header p {
   font-size: 1.2em;
 }
 
-/* Main Content */
-main {
-  flex: 1;
-  padding: 20px 0;
-}
-
 /* Cards */
 .card {
   background-color: #fff;
   border: 1px solid #ddd;
   border-radius: 8px;
   margin-bottom: 20px;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
   overflow: hidden;
+  padding: 20px;
 }
 .card-header {
   background-color: #222;
@@ -64,15 +59,15 @@ main {
 .toggle-btn {
   background: none;
   border: none;
-  font-size: 1.5em;
+  font-size: 1.5rem;
   color: #fff;
   cursor: pointer;
 }
+
+/* Card Content - hidden by default */
 .card-content {
-  display: none; /* hidden by default */
-}
-.card-content.active {
-  display: block;
+  display: none;
+  padding: 20px;
 }
 
 /* Form Groups */
@@ -103,11 +98,23 @@ main {
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 1em;
-  margin-top: 10px;
 }
 .btn:hover {
   background-color: #444;
+}
+
+/* Goal Option & Loan Mode Buttons */
+.goal-option-btn, .loan-mode-btn {
+  background-color: #ccc;
+  color: #222;
+  border: none;
+  padding: 10px 15px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.goal-option-btn.active, .loan-mode-btn.active {
+  background-color: #222;
+  color: #fff;
 }
 
 /* Result Display */
@@ -126,42 +133,27 @@ canvas {
   margin-top: 15px;
 }
 
-/* Footer */
+/* SWP Doughnut Chart styling: increased size and no border */
+#swpPieChart {
+  max-width: 300px;
+  max-height: 300px;
+  margin: 0 auto;
+}
+
+/* Footer - sticky to bottom */
 footer {
   background-color: #222;
   color: #fff;
   text-align: center;
   padding: 15px 0;
-}
-footer p {
-  margin: 0;
+  margin-top: auto;
+  width: 100%;
 }
 
-/* Responsive Design */
+/* Responsive */
 @media (max-width: 600px) {
   .container {
     width: 95%;
     padding: 0 10px;
-  }
-  header h1 {
-    font-size: 2em;
-  }
-  header p {
-    font-size: 1em;
-  }
-  .card-header {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-  .toggle-btn {
-    margin-top: 10px;
-  }
-  .btn {
-    padding: 8px 16px;
-    font-size: 0.9em;
-  }
-  canvas {
-    width: 100% !important;
-    height: auto !important;
   }
 }

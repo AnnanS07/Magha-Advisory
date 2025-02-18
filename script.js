@@ -40,10 +40,22 @@ function getNAVForDate(navData, dateStr) {
   if (filtered.length > 0) return parseFloat(filtered[filtered.length - 1].nav);
   return parseFloat(navData[0].nav);
 }
+function formatIndianCurrency(num) {
+  let x = Number(num).toFixed(2);
+  let parts = x.split(".");
+  let lastThree = parts[0].slice(-3);
+  let otherNumbers = parts[0].slice(0, -3);
+  if(otherNumbers !== "") {
+    lastThree = "," + lastThree;
+  }
+  let formatted = otherNumbers.replace(/\B(?=(\d{2})+(?!\d))/g, ",") + lastThree;
+  return "₹" + formatted + "." + parts[1];
+}
 
 // ====================================
 // Chart Update Functions
 // ====================================
+// The x-axis still uses the original date strings; we add autoSkip options to prevent overcrowding.
 function updateSIPChart(labels, investedData, portfolioData) {
   const ctx = document.getElementById("sipChart").getContext("2d");
   if (sipChart) sipChart.destroy();
@@ -57,25 +69,37 @@ function updateSIPChart(labels, investedData, portfolioData) {
       ]
     },
     options: {
-      scales: { x: { ticks: { color: "#222" }, grid: { color: "#ccc" } }, y: { ticks: { color: "#222" }, grid: { color: "#ccc" } } },
+      scales: { 
+        x: { 
+          ticks: { autoSkip: true, maxTicksLimit: 12, color: "#222" },
+          grid: { color: "#ccc" }
+        },
+        y: { ticks: { color: "#222" }, grid: { color: "#ccc" } }
+      },
       plugins: { legend: { labels: { color: "#222" } } }
     }
   });
   document.getElementById("sipChart").style.display = "block";
 }
-function updateLumpsumChart(dates, portfolioData) {
+function updateLumpsumChart(labels, portfolioData) {
   const ctx = document.getElementById("lumpsumChart").getContext("2d");
   if (lumpsumChart) lumpsumChart.destroy();
   lumpsumChart = new Chart(ctx, {
     type: "line",
     data: {
-      labels: dates,
+      labels: labels,
       datasets: [
         { label: "Portfolio Value (₹)", data: portfolioData, borderColor: "#FF6600", backgroundColor: "rgba(255,102,0,0.2)", fill: false, tension: 0.1 }
       ]
     },
     options: {
-      scales: { x: { ticks: { color: "#222" }, grid: { color: "#ccc" } }, y: { ticks: { color: "#222" }, grid: { color: "#ccc" } } },
+      scales: { 
+        x: { 
+          ticks: { autoSkip: true, maxTicksLimit: 12, color: "#222" },
+          grid: { color: "#ccc" }
+        },
+        y: { ticks: { color: "#222" }, grid: { color: "#ccc" } }
+      },
       plugins: { legend: { labels: { color: "#222" } } }
     }
   });
@@ -93,15 +117,45 @@ function updateLoanChart(labels, dataPoints) {
       ]
     },
     options: {
-      scales: { x: { ticks: { color: "#222" }, grid: { color: "#ccc" } }, y: { ticks: { color: "#222" }, grid: { color: "#ccc" } } },
+      scales: { 
+        x: { ticks: { color: "#222" }, grid: { color: "#ccc" } },
+        y: { ticks: { color: "#222" }, grid: { color: "#ccc" } }
+      },
       plugins: { legend: { labels: { color: "#222" } } }
     }
   });
   document.getElementById("loanChart").style.display = "block";
 }
+function updateSWPPieChart(totalWithdrawals, finalPortfolio) {
+  const ctx = document.getElementById("swpPieChart").getContext("2d");
+  if (window.swpPieChart && typeof window.swpPieChart.destroy === "function") {
+    window.swpPieChart.destroy();
+  }
+  window.swpPieChart = new Chart(ctx, {
+    type: "doughnut",
+    data: {
+      labels: ["Total Withdrawals", "Current Investment"],
+      datasets: [{
+        data: [totalWithdrawals, finalPortfolio],
+        backgroundColor: ["#FF6600", "#0077CC"]
+        // Border options removed for a seamless look.
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: "70%",
+      plugins: {
+        legend: { position: "bottom", labels: { color: "#222", font: { size: 14 } } },
+        tooltip: { enabled: true }
+      }
+    }
+  });
+  document.getElementById("swpPieChart").style.display = "block";
+}
 
 // ====================================
-// Mutual Fund List & Filtering for Mobile
+// Mutual Fund List & Filtering
 // ====================================
 function populateFundList() {
   fetch("https://api.mfapi.in/mf")
@@ -121,7 +175,8 @@ function filterFundList(query) {
   const fundList = document.getElementById("fundList");
   fundList.innerHTML = "";
   const filtered = allFunds.filter(fund => fund.schemeName.toLowerCase().includes(query.toLowerCase()));
-  const limited = filtered.slice(0, 100);
+  // Limit the list to only 10 items.
+  const limited = filtered.slice(0, 10);
   limited.forEach(fund => {
     const option = document.createElement("option");
     option.value = fund.schemeName;
@@ -187,7 +242,7 @@ function fetchLatestNAV(fundId) {
       const latestData = normalized[0];
       if (!latestData) throw new Error("No NAV data available");
       document.getElementById("latestNAV").innerHTML =
-        `<p>Latest NAV (as on ${latestData.date}): ₹${latestData.nav}</p>`;
+        `<p>Latest NAV (as on ${latestData.date}): ${formatIndianCurrency(latestData.nav)}</p>`;
     })
     .catch(err => {
       console.error("Error fetching latest NAV:", err);
@@ -249,7 +304,12 @@ function calculateSIP(navData, startDateStr, endDateStr, sipAmount, sipType, ste
   const CAGR = Math.pow(finalValue / totalInvested, 1 / totalYears) - 1;
   const returnPct = ((finalValue - totalInvested) / totalInvested) * 100;
   updateSIPChart(dates, investedArr, portfolioArr);
-  return { totalInvested: totalInvested.toFixed(2), finalValue: finalValue.toFixed(2), CAGR: (CAGR * 100).toFixed(2), returnPct: returnPct.toFixed(2) };
+  return { 
+    totalInvested: totalInvested.toFixed(2), 
+    finalValue: finalValue.toFixed(2), 
+    CAGR: (CAGR * 100).toFixed(2), 
+    returnPct: returnPct.toFixed(2) 
+  };
 }
 document.getElementById("calcSIP").addEventListener("click", function () {
   const fundId = getSelectedFundId();
@@ -264,8 +324,8 @@ document.getElementById("calcSIP").addEventListener("click", function () {
       const result = calculateSIP(navData, startDate, endDate, sipAmount, sipType, stepUpPercent);
       document.getElementById("sipResult").innerHTML =
         `<h3>SIP Calculation Results:</h3>
-         <p>Total Invested: ₹${result.totalInvested}</p>
-         <p>Final Value: ₹${result.finalValue}</p>
+         <p>Total Invested: ${formatIndianCurrency(result.totalInvested)}</p>
+         <p>Final Value: ${formatIndianCurrency(result.finalValue)}</p>
          <p>CAGR: ${result.CAGR}%</p>
          <p>Return (%): ${result.returnPct}%</p>`;
     })
@@ -279,32 +339,37 @@ document.getElementById("sipType").addEventListener("change", function() {
 });
 
 // ====================================
-// SWP Calculator (Updated)
+// SWP Calculator (Updated per requirements)
 // ====================================
+// Calculates current investment value as: initialPortfolio * (finalNAV / initialNAV)
+// and total withdrawn as: withdrawal * number_of_months.
 function calculateSWP(navData, startDateStr, endDateStr, initialPortfolio, withdrawal) {
-  let currentPortfolio = initialPortfolio;
-  const startDate = parseDate(startDateStr),
-        endDate = parseDate(endDateStr);
-  let previousNAV = getNAVForDate(navData, formatDate(startDate));
-  let currentDate = new Date(startDate);
+  const startDate = parseDate(startDateStr);
+  const endDate = parseDate(endDateStr);
   
-  // Simulate monthly withdrawals using historical NAVs.
-  while (currentDate <= endDate) {
-    const dateStr = formatDate(currentDate);
-    const currentNAV = getNAVForDate(navData, dateStr);
-    currentPortfolio = currentPortfolio * (currentNAV / previousNAV) - withdrawal;
-    previousNAV = currentNAV;
-    currentDate.setMonth(currentDate.getMonth() + 1);
-  }
+  // Get initial and final NAV.
+  const initialNAV = getNAVForDate(navData, formatDate(startDate));
+  const finalNAV = getNAVForDate(navData, formatDate(endDate));
   
-  // New SWP return calculation: Total Return = Final - Initial
-  const totalReturn = currentPortfolio - initialPortfolio;
+  // Calculate current investment value based on NAV growth.
+  const currentInvestment = initialPortfolio * (finalNAV / initialNAV);
+  
+  // Calculate number of months between start and end dates.
+  const months = ((endDate.getFullYear() - startDate.getFullYear()) * 12) +
+                 (endDate.getMonth() - startDate.getMonth()) + 1;
+  
+  // Total withdrawn is withdrawal per month multiplied by number of months.
+  const totalWithdrawn = withdrawal * months;
+  
+  // Performance metrics.
+  const totalReturn = currentInvestment - initialPortfolio;
   const returnPct = (totalReturn / initialPortfolio) * 100;
-  const totalYears = (endDate - startDate) / (365.25 * 24 * 3600 * 1000);
-  const CAGR = Math.pow(currentPortfolio / initialPortfolio, 1 / totalYears) - 1;
+  const years = (endDate - startDate) / (365.25 * 24 * 3600 * 1000);
+  const CAGR = Math.pow(currentInvestment / initialPortfolio, 1 / years) - 1;
   
   return {
-    finalPortfolio: currentPortfolio.toFixed(2),
+    finalPortfolio: currentInvestment.toFixed(2),
+    totalWithdrawals: totalWithdrawn.toFixed(2),
     totalReturn: totalReturn.toFixed(2),
     CAGR: (CAGR * 100).toFixed(2),
     returnPct: returnPct.toFixed(2)
@@ -312,27 +377,31 @@ function calculateSWP(navData, startDateStr, endDateStr, initialPortfolio, withd
 }
 document.getElementById("calcSWP").addEventListener("click", function () {
   const fundId = getSelectedFundId();
-  if (!fundId) { alert("Please select a valid mutual fund for SWP calculations."); return; }
+  if (!fundId) {
+    alert("Please select a valid mutual fund for SWP calculations.");
+    return;
+  }
   const swpStartDate = document.getElementById("swpStartDate").value;
   const swpEndDate = document.getElementById("swpEndDate").value;
   const initialPortfolio = parseFloat(document.getElementById("initialPortfolio").value);
   const withdrawal = parseFloat(document.getElementById("withdrawalAmount").value);
+  
   fetchHistoricalData(fundId)
     .then(navData => {
       const result = calculateSWP(navData, swpStartDate, swpEndDate, initialPortfolio, withdrawal);
       document.getElementById("swpResult").innerHTML =
         `<h3>SWP Calculation Results:</h3>
-         <p>Final Portfolio Value: ₹${result.finalPortfolio}</p>
-         <p>Total Return: ₹${result.totalReturn}</p>
+         <p>Current Investment Value: ${formatIndianCurrency(result.finalPortfolio)}</p>
+         <p>Total Withdrawn: ${formatIndianCurrency(result.totalWithdrawals)}</p>
+         <p>Total Return: ${formatIndianCurrency(result.totalReturn)}</p>
          <p>CAGR: ${result.CAGR}%</p>
          <p>Return (%): ${result.returnPct}%</p>`;
+      updateSWPPieChart(result.totalWithdrawals, result.finalPortfolio);
     })
     .catch(err => {
       console.error("Error fetching historical NAV data for SWP:", err);
       document.getElementById("swpResult").innerHTML = `<p>Error fetching data. Please try again.</p>`;
     });
-  
-  // (Optional: Remove or update pie chart code if needed)
 });
 
 // ====================================
@@ -374,13 +443,25 @@ function updateLumpsumChart(navData, startDateStr, endDateStr, lumpsumAmount) {
   lumpsumChart = new Chart(ctx, {
     type: "line",
     data: { labels: dates, datasets: [ { label: "Portfolio Value (₹)", data: portfolioArr, borderColor: "#FF6600", backgroundColor: "rgba(255,102,0,0.2)", fill: false, tension: 0.1 } ] },
-    options: { scales: { x: { ticks: { color: "#222" }, grid: { color: "#ccc" } }, y: { ticks: { color: "#222" }, grid: { color: "#ccc" } } }, plugins: { legend: { labels: { color: "#222" } } } }
+    options: { 
+      scales: { 
+        x: { 
+          ticks: { autoSkip: true, maxTicksLimit: 12, color: "#222" },
+          grid: { color: "#ccc" }
+        },
+        y: { ticks: { color: "#222" }, grid: { color: "#ccc" } }
+      },
+      plugins: { legend: { labels: { color: "#222" } } }
+    }
   });
   document.getElementById("lumpsumChart").style.display = "block";
 }
 document.getElementById("calcLumpsum").addEventListener("click", function () {
   const fundId = getSelectedFundId();
-  if (!fundId) { alert("Please select a valid mutual fund for Lumpsum calculations."); return; }
+  if (!fundId) {
+    alert("Please select a valid mutual fund for Lumpsum calculations.");
+    return;
+  }
   const startDate = document.getElementById("lumpsumStartDate").value;
   const endDate = document.getElementById("lumpsumEndDate").value;
   const lumpsumAmount = parseFloat(document.getElementById("lumpsumAmount").value);
@@ -389,7 +470,7 @@ document.getElementById("calcLumpsum").addEventListener("click", function () {
       const result = calculateLumpsum(navData, startDate, endDate, lumpsumAmount);
       document.getElementById("lumpsumResult").innerHTML =
         `<h3>Lumpsum Calculation Results:</h3>
-         <p>Final Value: ₹${result.finalValue}</p>
+         <p>Final Value: ${formatIndianCurrency(result.finalValue)}</p>
          <p>CAGR: ${result.CAGR}%</p>
          <p>Return (%): ${result.returnPct}%</p>`;
       updateLumpsumChart(navData, startDate, endDate, lumpsumAmount);
@@ -403,207 +484,68 @@ document.getElementById("calcLumpsum").addEventListener("click", function () {
 // ====================================
 // Goal Based Planner Calculator (Independent)
 // ====================================
-function simulateSIPForGoal(navData, startDate, endDate, initialSIP, stepUpPercent) {
-  let totalInvested = 0, totalUnits = 0;
-  let currentDate = new Date(startDate);
-  while (currentDate <= endDate) {
-    let currentSip = initialSIP * Math.pow(1 + (stepUpPercent / 100), getAnniversaryCount(startDate, currentDate));
-    const dateStr = formatDate(currentDate);
-    const navValue = getNAVForDate(navData, dateStr);
-    totalUnits += currentSip / navValue;
-    totalInvested += currentSip;
-    currentDate.setMonth(currentDate.getMonth() + 1);
-  }
-  const endNAV = getNAVForDate(navData, formatDate(endDate));
-  const finalValue = totalUnits * endNAV;
-  return finalValue;
-}
-function calculateLumpsumForGoalUsingHistory(navData, startDate, endDate, target) {
-  const startNAV = getNAVForDate(navData, formatDate(startDate));
-  const endNAV = getNAVForDate(navData, formatDate(endDate));
-  return target * (startNAV / endNAV);
-}
-function solveRequiredSIPForGoal(target, navData, years, stepUpPercent) {
-  const startDate = new Date();
-  const endDate = new Date();
-  endDate.setFullYear(endDate.getFullYear() + years);
-  let low = 0, high = target / (years * 12);
-  let mid;
-  for (let i = 0; i < 20; i++) {
-    mid = (low + high) / 2;
-    const finalVal = simulateSIPForGoal(navData, startDate, endDate, mid, stepUpPercent);
-    if (finalVal < target) low = mid; else high = mid;
-  }
-  return mid;
-}
 document.getElementById("calcGoal").addEventListener("click", function () {
-  const goalOption = document.querySelector('input[name="goalOption"]:checked').value;
+  const goalOption = document.querySelector(".goal-option-btn.active").getAttribute("data-option");
   const targetAmount = parseFloat(document.getElementById("targetAmount").value);
-  const goalReturn = parseFloat(document.getElementById("goalReturn").value);
+  const goalReturn = parseFloat(document.getElementById("goalReturn").value) / 100;
+  const years = parseFloat(document.getElementById("goalYears").value);
   let resultHTML = "<h3>Goal Based Planner Results:</h3>";
+  
   if (goalOption === "investment") {
-    const modeSelect = document.getElementById("investmentMode").value;
-    const years = parseFloat(document.getElementById("goalYears").value);
-    if (modeSelect === "lumpsum") {
-      const fundId = getSelectedFundId();
-      if (!fundId) { alert("Please select a valid mutual fund for goal planner calculations."); return; }
-      fetchHistoricalData(fundId)
-        .then(navData => {
-          const startDate = new Date(), endDate = new Date();
-          endDate.setFullYear(endDate.getFullYear() + years);
-          const requiredLumpsum = calculateLumpsumForGoalUsingHistory(navData, startDate, endDate, targetAmount);
-          resultHTML += `<p>Required Lumpsum Investment: ₹${requiredLumpsum.toFixed(2)}</p>`;
-          document.getElementById("goalResult").innerHTML = resultHTML;
-        })
-        .catch(err => {
-          console.error("Error fetching historical NAV data for Goal Planner:", err);
-          document.getElementById("goalResult").innerHTML = `<p>Error fetching data. Please try again.</p>`;
-        });
-      return;
-    } else if (modeSelect === "sip") {
+    if (document.getElementById("investmentMode").value === "lumpsum") {
+      const requiredLumpsum = targetAmount / Math.pow(1 + goalReturn, years);
+      resultHTML += `<p>Required Lumpsum Investment: ${formatIndianCurrency(requiredLumpsum)}</p>`;
+    } else {
+      const n = years * 12;
+      const r = goalReturn / 12;
+      const factor = ((Math.pow(1 + r, n) - 1) / r) * (1 + r);
+      const requiredSIP = targetAmount / factor;
       const stepUp = parseFloat(document.getElementById("goalStepUpPercent").value) || 0;
-      const fundId = getSelectedFundId();
-      if (!fundId) { alert("Please select a valid mutual fund for goal planner calculations."); return; }
-      fetchHistoricalData(fundId)
-        .then(navData => {
-          const requiredSIP = solveRequiredSIPForGoal(targetAmount, navData, years, stepUp);
-          resultHTML += `<p>Required Monthly SIP (with ${stepUp}% step-up): ₹${requiredSIP.toFixed(2)}</p>`;
-          document.getElementById("goalResult").innerHTML = resultHTML;
-        })
-        .catch(err => {
-          console.error("Error fetching historical NAV data for Goal Planner:", err);
-          document.getElementById("goalResult").innerHTML = `<p>Error fetching data. Please try again.</p>`;
-        });
-      return;
+      resultHTML += `<p>Required Monthly SIP (with ${stepUp}% step-up if applied): ${formatIndianCurrency(requiredSIP)}</p>`;
     }
   } else if (goalOption === "time") {
-    const modeSelect = document.getElementById("investmentMode").value;
-    if (modeSelect === "lumpsum") {
+    if (document.getElementById("investmentMode").value === "lumpsum") {
       const lumpsumGiven = parseFloat(document.getElementById("existingLumpsum").value);
-      const timeNeeded = calculateTimeForLumpsum(lumpsumGiven, targetAmount, goalReturn);
-      resultHTML += `<p>Time Required (Lumpsum): ${timeNeeded.toFixed(2)} years</p>`;
-    } else if (modeSelect === "sip") {
+      const yearsNeeded = Math.log(targetAmount / lumpsumGiven) / Math.log(1 + goalReturn);
+      resultHTML += `<p>Time Required (Lumpsum): ${yearsNeeded.toFixed(2)} years</p>`;
+    } else {
       const sipGiven = parseFloat(document.getElementById("existingSIP").value);
-      const timeNeeded = calculateTimeForSIP(sipGiven, targetAmount, goalReturn);
-      resultHTML += `<p>Time Required (SIP): ${timeNeeded.toFixed(2)} years</p>`;
+      let n = 1;
+      const r = goalReturn / 12;
+      while (sipGiven * ((Math.pow(1 + r, n) - 1) / r) * (1 + r) < targetAmount && n < 1000) {
+        n++;
+      }
+      resultHTML += `<p>Time Required (SIP): ${(n / 12).toFixed(2)} years</p>`;
     }
   } else if (goalOption === "combination") {
-    const comboChoice = document.getElementById("comboChoice").value;
-    const years = parseFloat(document.getElementById("comboYears").value);
-    if (comboChoice === "lumpsum") {
-      const lumpsumProvided = parseFloat(document.getElementById("givenLumpsum").value);
-      const lumpsumFuture = lumpsumProvided * Math.pow(1 + goalReturn / 100, years);
-      const remainingTarget = targetAmount - lumpsumFuture;
-      if (remainingTarget <= 0) resultHTML += `<p>Your lumpsum alone meets the target.</p>`;
-      else {
-        const requiredSIP = calculateMonthlySIPForGoal(remainingTarget, years, goalReturn);
-        resultHTML += `<p>Additional required Monthly SIP: ₹${requiredSIP.toFixed(2)}</p>`;
-      }
-    } else if (comboChoice === "sip") {
-      const sipProvided = parseFloat(document.getElementById("givenSIP").value);
-      const r = goalReturn / 100 / 12;
-      const n = years * 12;
-      const sipFuture = sipProvided * ((Math.pow(1 + r, n) - 1) / r) * (1 + r);
-      const remainingTarget = targetAmount - sipFuture;
-      if (remainingTarget <= 0) resultHTML += `<p>Your SIP alone meets the target.</p>`;
-      else {
-        const requiredLumpsum = calculateLumpsumForGoal(remainingTarget, years, goalReturn);
-        resultHTML += `<p>Additional required Lumpsum Investment: ₹${requiredLumpsum.toFixed(2)}</p>`;
-      }
-    }
+    resultHTML += `<p>Combination mode calculations are not implemented.</p>`;
   }
   document.getElementById("goalResult").innerHTML = resultHTML;
 });
   
-// ====================================
-// Dynamic UI for Goal Based Planner
-// ====================================
-document.querySelectorAll('input[name="goalOption"]').forEach(radio => {
-  radio.addEventListener("change", function() {
-    const mode = this.value;
-    document.getElementById("investmentInputs").style.display = (mode === "investment") ? "block" : "none";
-    document.getElementById("timeInputs").style.display = (mode === "time") ? "block" : "none";
-    document.getElementById("combinationInputs").style.display = (mode === "combination") ? "block" : "none";
+// Dynamic UI for Goal Based Planner Buttons
+document.addEventListener("DOMContentLoaded", function() {
+  const goalButtons = document.querySelectorAll(".goal-option-btn");
+  goalButtons.forEach(btn => {
+    btn.addEventListener("click", function() {
+      goalButtons.forEach(b => b.classList.remove("active"));
+      this.classList.add("active");
+      const option = this.getAttribute("data-option");
+      if (option === "investment") {
+        document.getElementById("investmentInputs").style.display = "block";
+        document.getElementById("timeInputs").style.display = "none";
+        document.getElementById("combinationInputs").style.display = "none";
+      } else if (option === "time") {
+        document.getElementById("investmentInputs").style.display = "none";
+        document.getElementById("timeInputs").style.display = "block";
+        document.getElementById("combinationInputs").style.display = "none";
+      } else if (option === "combination") {
+        document.getElementById("investmentInputs").style.display = "none";
+        document.getElementById("timeInputs").style.display = "none";
+        document.getElementById("combinationInputs").style.display = "block";
+      }
+    });
   });
-});
-document.getElementById("comboChoice").addEventListener("change", function() {
-  if (this.value === "lumpsum") {
-    document.getElementById("comboLumpsum").style.display = "block";
-    document.getElementById("comboSIP").style.display = "none";
-  } else if (this.value === "sip") {
-    document.getElementById("comboLumpsum").style.display = "none";
-    document.getElementById("comboSIP").style.display = "block";
-  }
-});
-document.getElementById("investmentMode").addEventListener("change", function() {
-  document.getElementById("goalSipInputs").style.display = this.value === "sip" ? "block" : "none";
-});
-
-// ====================================
-// Retirement Planner Calculator
-// ====================================
-function calculateRetirementCorpus(currentSavings, monthlyContribution, years, stepUp, annualReturn, inflationRate) {
-  const n = years * 12;
-  const r = annualReturn / 100 / 12;
-  let corpusFromSavings = currentSavings * Math.pow(1 + r, n);
-  let corpusFromContributions = 0;
-  for (let m = 0; m < n; m++) {
-    let yearsPassed = Math.floor(m / 12);
-    let contribution = monthlyContribution * Math.pow(1 + (stepUp / 100), yearsPassed);
-    corpusFromContributions += contribution * Math.pow(1 + r, n - m);
-  }
-  let totalCorpus = corpusFromSavings + corpusFromContributions;
-  totalCorpus = inflationRate ? totalCorpus / Math.pow(1 + (inflationRate / 100) / 12, n) : totalCorpus;
-  return totalCorpus;
-}
-document.getElementById("calcRetirement").addEventListener("click", function() {
-  const currentAge = parseFloat(document.getElementById("currentAge").value);
-  const retirementAge = parseFloat(document.getElementById("retirementAge").value);
-  const currentSavings = parseFloat(document.getElementById("currentSavingsRet").value);
-  const monthlyContribution = parseFloat(document.getElementById("monthlyContributionRet").value);
-  const stepUp = parseFloat(document.getElementById("retStepUp").value) || 0;
-  const annualReturn = parseFloat(document.getElementById("retAnnualReturn").value);
-  const inflationRate = parseFloat(document.getElementById("retInflationRate").value) || 0;
-  const years = retirementAge - currentAge;
-  const corpus = calculateRetirementCorpus(currentSavings, monthlyContribution, years, stepUp, annualReturn, inflationRate);
-  document.getElementById("retirementResult").innerHTML =
-    `<h3>Retirement Planner Results:</h3>
-     <p>Estimated Corpus at Retirement: ₹${corpus.toFixed(2)}</p>`;
-});
-
-// ====================================
-// Children Education Planner Calculator
-// ====================================
-function calculateEducationPlanner(childAge, eduAge, currentCost, inflationRate, monthlyContribution, stepUp, annualReturn, currentSavings) {
-  const years = eduAge - childAge;
-  const futureCost = currentCost * Math.pow(1 + inflationRate / 100, years);
-  const n = years * 12;
-  const r = annualReturn / 100 / 12;
-  let futureSavings = currentSavings * Math.pow(1 + r, n);
-  let futureContributions = 0;
-  for (let m = 0; m < n; m++) {
-    let yearsPassed = Math.floor(m / 12);
-    let contribution = monthlyContribution * Math.pow(1 + (stepUp / 100), yearsPassed);
-    futureContributions += contribution * Math.pow(1 + r, n - m);
-  }
-  const totalCorpus = futureSavings + futureContributions;
-  return { futureCost, totalCorpus, gap: Math.max(0, futureCost - totalCorpus) };
-}
-document.getElementById("calcEducation").addEventListener("click", function() {
-  const childAge = parseFloat(document.getElementById("childAge").value);
-  const eduAge = parseFloat(document.getElementById("eduAge").value);
-  const currentCost = parseFloat(document.getElementById("currentCostEdu").value);
-  const inflationRate = parseFloat(document.getElementById("eduInflationRate").value) || 0;
-  const monthlyContribution = parseFloat(document.getElementById("monthlyContributionEdu").value);
-  const stepUp = parseFloat(document.getElementById("eduStepUp").value) || 0;
-  const annualReturn = parseFloat(document.getElementById("eduAnnualReturn").value);
-  const currentSavings = parseFloat(document.getElementById("currentSavingsEdu").value);
-  const { futureCost, totalCorpus, gap } = calculateEducationPlanner(childAge, eduAge, currentCost, inflationRate, monthlyContribution, stepUp, annualReturn, currentSavings);
-  document.getElementById("educationResult").innerHTML =
-    `<h3>Children Education Planner Results:</h3>
-     <p>Estimated Cost at Education Age: ₹${futureCost.toFixed(2)}</p>
-     <p>Future Value of Savings & Contributions: ₹${totalCorpus.toFixed(2)}</p>
-     <p>Gap (Additional Corpus Needed): ₹${gap.toFixed(2)}</p>`;
 });
 
 // ====================================
@@ -638,14 +580,16 @@ document.getElementById("calcLoan").addEventListener("click", function() {
     const result = calculateLoanEMI(loanAmount, loanInterest, loanTenure);
     document.getElementById("loanResult").innerHTML =
       `<h3>Loan Calculator Results (EMI Mode):</h3>
-       <p>Monthly EMI: ₹${result.EMI.toFixed(2)}</p>
-       <p>Total Interest Payable: ₹${result.totalInterest.toFixed(2)}</p>
-       <p>Total Payment: ₹${result.totalPayment.toFixed(2)}</p>`;
+       <p>Monthly EMI: ${formatIndianCurrency(result.EMI)}</p>
+       <p>Total Interest Payable: ${formatIndianCurrency(result.totalInterest)}</p>
+       <p>Total Payment: ${formatIndianCurrency(result.totalPayment)}</p>`;
     simulateLoanEMI(loanAmount, loanInterest, loanTenure);
   } else if (loanMode === "tenure") {
-    document.getElementById("loanResult").innerHTML = `<h3>Loan Calculator Results (Tenure Mode):</h3><p>Feature under development.</p>`;
+    document.getElementById("loanResult").innerHTML =
+      `<h3>Loan Calculator Results (Tenure Mode):</h3><p>Feature under development.</p>`;
   } else if (loanMode === "rate") {
-    document.getElementById("loanResult").innerHTML = `<h3>Loan Calculator Results (Rate Mode):</h3><p>Feature under development.</p>`;
+    document.getElementById("loanResult").innerHTML =
+      `<h3>Loan Calculator Results (Rate Mode):</h3><p>Feature under development.</p>`;
   }
 });
 document.querySelectorAll('input[name="loanMode"]').forEach(radio => {
@@ -671,7 +615,7 @@ document.querySelectorAll('input[name="loanMode"]').forEach(radio => {
 });
 
 // ====================================
-// Toggle Button Functionality
+// Toggle Button Functionality (Burger Toggle)
 // ====================================
 document.querySelectorAll(".toggle-btn").forEach(btn => {
   btn.addEventListener("click", function() {
