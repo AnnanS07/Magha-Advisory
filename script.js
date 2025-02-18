@@ -1,9 +1,10 @@
 // ====================================
-// Global Variables for Charts
+// Global Variables for Charts and Funds
 // ====================================
 let sipChart;
 let lumpsumChart;
 let loanChart;  // For loan illustration
+let allFunds = [];  // Will store all mutual fund data
 
 // ====================================
 // Helper Functions
@@ -105,28 +106,43 @@ function updateLoanChart(labels, dataPoints) {
 }
 
 // ====================================
-// Mutual Fund List & Selector
+// Mutual Fund List & Filtering (for Mobile Performance)
 // ====================================
 function populateFundList() {
   fetch("https://api.mfapi.in/mf")
     .then(response => response.json())
     .then(data => {
-      const fundList = document.getElementById("fundList");
-      fundList.innerHTML = "";
-      data.forEach(fund => {
+      // Store full list in global variable
+      allFunds = data.map(fund => {
         let schemeName = fund.schemeName || (fund.meta && fund.meta.scheme_name);
         let schemeCode = fund.schemeCode || (fund.meta && fund.meta.scheme_code);
-        if (schemeName && schemeCode) {
-          const option = document.createElement("option");
-          option.value = schemeName;
-          option.setAttribute("data-id", schemeCode);
-          fundList.appendChild(option);
-        }
-      });
+        return { schemeName, schemeCode };
+      }).filter(fund => fund.schemeName && fund.schemeCode);
+      // Initially, show a filtered list with empty query
+      filterFundList("");
     })
     .catch(err => console.error("Error populating fund list:", err));
 }
 document.addEventListener("DOMContentLoaded", populateFundList);
+
+function filterFundList(query) {
+  const fundList = document.getElementById("fundList");
+  fundList.innerHTML = "";
+  // Filter the global fund list based on the query
+  const filtered = allFunds.filter(fund => fund.schemeName.toLowerCase().includes(query.toLowerCase()));
+  // Limit to 100 results for performance
+  const limited = filtered.slice(0, 10);
+  limited.forEach(fund => {
+    const option = document.createElement("option");
+    option.value = fund.schemeName;
+    option.setAttribute("data-id", fund.schemeCode);
+    fundList.appendChild(option);
+  });
+}
+
+document.getElementById("fundNameInput").addEventListener("input", function() {
+  filterFundList(this.value);
+});
 
 function getSelectedFundId() {
   const input = document.getElementById("fundNameInput");
@@ -245,12 +261,7 @@ function calculateSIP(navData, startDateStr, endDateStr, sipAmount, sipType, ste
   const CAGR = Math.pow(finalValue / totalInvested, 1 / totalYears) - 1;
   const returnPct = ((finalValue - totalInvested) / totalInvested) * 100;
   updateSIPChart(dates, investedArr, portfolioArr);
-  return {
-    totalInvested: totalInvested.toFixed(2),
-    finalValue: finalValue.toFixed(2),
-    CAGR: (CAGR * 100).toFixed(2),
-    returnPct: returnPct.toFixed(2)
-  };
+  return { totalInvested: totalInvested.toFixed(2), finalValue: finalValue.toFixed(2), CAGR: (CAGR * 100).toFixed(2), returnPct: returnPct.toFixed(2) };
 }
 document.getElementById("calcSIP").addEventListener("click", function () {
   const fundId = getSelectedFundId();
@@ -301,13 +312,7 @@ function calculateSWP(navData, startDateStr, endDateStr, initialPortfolio, withd
   const returnPct = ((currentPortfolio - initialPortfolio) / initialPortfolio) * 100;
   const totalYears = (endDate - startDate) / (365.25 * 24 * 3600 * 1000);
   const CAGR = Math.pow((currentPortfolio + totalWithdrawn) / initialPortfolio, 1 / totalYears) - 1;
-  return {
-    finalPortfolio: currentPortfolio.toFixed(2),
-    totalWithdrawn: totalWithdrawn.toFixed(2),
-    totalReturn: totalReturn.toFixed(2),
-    CAGR: (CAGR * 100).toFixed(2),
-    returnPct: returnPct.toFixed(2)
-  };
+  return { finalPortfolio: currentPortfolio.toFixed(2), totalWithdrawn: totalWithdrawn.toFixed(2), totalReturn: totalReturn.toFixed(2), CAGR: (CAGR * 100).toFixed(2), returnPct: returnPct.toFixed(2) };
 }
 document.getElementById("calcSWP").addEventListener("click", function () {
   const fundId = getSelectedFundId();
@@ -504,7 +509,7 @@ document.getElementById("calcGoal").addEventListener("click", function () {
   }
   document.getElementById("goalResult").innerHTML = resultHTML;
 });
-
+  
 // ====================================
 // Dynamic UI for Goal Based Planner
 // ====================================
@@ -538,20 +543,17 @@ function calculateRetirementCorpus(currentSavings, monthlyContribution, years, s
   let corpusFromSavings = currentSavings * Math.pow(1 + r, n);
   let corpusFromContributions = 0;
   for (let m = 0; m < n; m++) {
-    // Determine number of full years passed
     let yearsPassed = Math.floor(m / 12);
     let contribution = monthlyContribution * Math.pow(1 + (stepUp / 100), yearsPassed);
     corpusFromContributions += contribution * Math.pow(1 + r, n - m);
   }
   let totalCorpus = corpusFromSavings + corpusFromContributions;
-  // If inflation adjustment is enabled, adjust the corpus to today's value
   if (inflationEnabled) {
     const monthlyInflation = inflationRate / 100 / 12;
     totalCorpus = totalCorpus / Math.pow(1 + monthlyInflation, n);
   }
   return totalCorpus;
 }
-
 document.getElementById("calcRetirement").addEventListener("click", function() {
   const currentAge = parseFloat(document.getElementById("currentAge").value);
   const retirementAge = parseFloat(document.getElementById("retirementAge").value);
@@ -562,7 +564,6 @@ document.getElementById("calcRetirement").addEventListener("click", function() {
   const years = retirementAge - currentAge;
   const inflationEnabled = document.getElementById("retInflationChk").checked;
   const inflationRate = inflationEnabled ? parseFloat(document.getElementById("retInflationRate").value) || 0 : 0;
-  
   const corpus = calculateRetirementCorpus(currentSavings, monthlyContribution, years, stepUp, annualReturn, inflationEnabled, inflationRate);
   document.getElementById("retirementResult").innerHTML =
     `<h3>Retirement Planner Results:</h3>
@@ -577,9 +578,7 @@ document.getElementById("retInflationChk").addEventListener("change", function()
 // ====================================
 function calculateEducationPlanner(childAge, eduAge, currentCost, inflationRate, monthlyContribution, stepUp, annualReturn, currentSavings) {
   const years = eduAge - childAge;
-  // Future cost of education (inflation-adjusted)
   const futureCost = currentCost * Math.pow(1 + inflationRate / 100, years);
-  // Future value of current savings and contributions
   const n = years * 12;
   const r = annualReturn / 100 / 12;
   let futureSavings = currentSavings * Math.pow(1 + r, n);
@@ -592,7 +591,6 @@ function calculateEducationPlanner(childAge, eduAge, currentCost, inflationRate,
   const totalCorpus = futureSavings + futureContributions;
   return { futureCost, totalCorpus, gap: Math.max(0, futureCost - totalCorpus) };
 }
-
 document.getElementById("calcEducation").addEventListener("click", function() {
   const childAge = parseFloat(document.getElementById("childAge").value);
   const eduAge = parseFloat(document.getElementById("eduAge").value);
@@ -602,7 +600,6 @@ document.getElementById("calcEducation").addEventListener("click", function() {
   const stepUp = parseFloat(document.getElementById("eduStepUp").value) || 0;
   const annualReturn = parseFloat(document.getElementById("eduAnnualReturn").value);
   const currentSavings = parseFloat(document.getElementById("currentSavingsEdu").value);
-  
   const { futureCost, totalCorpus, gap } = calculateEducationPlanner(childAge, eduAge, currentCost, inflationRate, monthlyContribution, stepUp, annualReturn, currentSavings);
   document.getElementById("educationResult").innerHTML =
     `<h3>Children Education Planner Results:</h3>
@@ -623,7 +620,6 @@ function calculateLoanEMI(loanAmount, annualInterestRate, tenureYears) {
   return { EMI, totalInterest, totalPayment };
 }
 function simulateLoanEMI(loanAmount, annualInterestRate, tenureYears) {
-  // For illustration: create an array of EMI values when varying interest rate slightly.
   const dataPoints = [];
   const labels = [];
   for (let rate = annualInterestRate - 2; rate <= annualInterestRate + 2; rate += 0.5) {
@@ -647,20 +643,13 @@ document.getElementById("calcLoan").addEventListener("click", function() {
        <p>Monthly EMI: ₹${result.EMI.toFixed(2)}</p>
        <p>Total Interest Payable: ₹${result.totalInterest.toFixed(2)}</p>
        <p>Total Payment: ₹${result.totalPayment.toFixed(2)}</p>`;
-    updateLoanChart(null, null); // update chart below
     simulateLoanEMI(loanAmount, loanInterest, loanTenure);
   } else if (loanMode === "tenure") {
-    // Placeholder: you can add iterative calculation to solve for tenure given EMI and loan amount.
     document.getElementById("loanResult").innerHTML = `<h3>Loan Calculator Results (Tenure Mode):</h3><p>Feature under development.</p>`;
   } else if (loanMode === "rate") {
-    // Placeholder: add iterative calculation to solve for rate given EMI and loan amount.
     document.getElementById("loanResult").innerHTML = `<h3>Loan Calculator Results (Rate Mode):</h3><p>Feature under development.</p>`;
   }
 });
-
-// ====================================
-// Dynamic UI for Loan Calculator
-// ====================================
 document.querySelectorAll('input[name="loanMode"]').forEach(radio => {
   radio.addEventListener("change", function() {
     const mode = this.value;
@@ -682,4 +671,3 @@ document.querySelectorAll('input[name="loanMode"]').forEach(radio => {
     }
   });
 });
-

@@ -21,7 +21,7 @@
   </header>
   
   <main class="container">
-    <!-- Mutual Fund Selector (used by investment calculators) -->
+    <!-- Mutual Fund Selector (for investment calculators) -->
     <section id="fundSelector" class="card">
       <h2>Select Mutual Fund</h2>
       <input type="text" id="fundNameInput" placeholder="Type mutual fund name" list="fundList" />
@@ -110,7 +110,7 @@
       <canvas id="lumpsumChart" width="400" height="200"></canvas>
     </section>
 
-    <!-- Goal Based Planner Section -->
+    <!-- Goal Based Planner Section (Independent from Mutual Fund Selector) -->
     <section id="goalPlanner" class="card">
       <h2>Goal Based Planner</h2>
       <div class="form-group">
@@ -281,7 +281,6 @@
       </div>
       <button id="calcLoan" class="btn">Calculate Loan</button>
       <div id="loanResult" class="result"></div>
-      <!-- A simple chart for EMI illustration (for EMI mode) -->
       <canvas id="loanChart" width="400" height="200"></canvas>
     </section>
   </main>
