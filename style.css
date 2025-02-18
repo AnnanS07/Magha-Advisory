@@ -69,8 +69,10 @@ main {
   cursor: pointer;
 }
 .card-content {
-  padding: 15px;
-  display: none; /* Initially collapsed */
+  display: none; /* hidden by default */
+}
+.card-content.active {
+  display: block;
 }
 
 /* Form Groups */

@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Magha Advisory Dashboard</title>
-  <!-- Google Fonts: Montserrat for a modern professional look -->
+  <!-- Google Fonts: Montserrat for a modern, professional look -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&display=swap" rel="stylesheet">
@@ -21,7 +21,7 @@
   </header>
   
   <main class="container">
-    <!-- Mutual Fund Selector (used for investment calculators) -->
+    <!-- Mutual Fund Selector Section -->
     <section class="card" id="fundSection">
       <div class="card-header">
         <h2>Mutual Fund Selector</h2>
@@ -66,13 +66,13 @@
             <option value="stepup">Step-Up SIP</option>
           </select>
         </div>
-        <div class="form-group" id="stepUpContainer" style="display:none;">
+        <div class="form-group" id="stepUpContainer" style="display: none;">
           <label for="stepUpPercent">Step-Up Percentage (per year, optional):</label>
           <input type="number" id="stepUpPercent" placeholder="e.g., 5" />
         </div>
         <button id="calcSIP" class="btn">Calculate SIP</button>
         <div id="sipResult" class="result"></div>
-        <canvas id="sipChart" width="400" height="200" style="display:none;"></canvas>
+        <canvas id="sipChart" width="400" height="200" style="display: none;"></canvas>
       </div>
     </section>
 
@@ -101,8 +101,7 @@
         </div>
         <button id="calcSWP" class="btn">Calculate SWP</button>
         <div id="swpResult" class="result"></div>
-        <!-- Pie chart for SWP breakdown -->
-        <canvas id="swpPieChart" width="400" height="200" style="display:none;"></canvas>
+        <canvas id="swpPieChart" width="400" height="200" style="display: none;"></canvas>
       </div>
     </section>
 
@@ -127,11 +126,11 @@
         </div>
         <button id="calcLumpsum" class="btn">Calculate Lumpsum</button>
         <div id="lumpsumResult" class="result"></div>
-        <canvas id="lumpsumChart" width="400" height="200" style="display:none;"></canvas>
+        <canvas id="lumpsumChart" width="400" height="200" style="display: none;"></canvas>
       </div>
     </section>
 
-    <!-- Goal Based Planner Section (Independent) -->
+    <!-- Goal Based Planner Section -->
     <section class="card" id="goalSection">
       <div class="card-header">
         <h2>Goal Based Planner</h2>
@@ -147,12 +146,12 @@
           <input type="number" id="goalReturn" placeholder="Enter expected return" step="0.1" required />
         </div>
         <div class="form-group">
-          <p>Solve For:</p>
+          <p>Select Option:</p>
+          <!-- You may later convert these radios to buttons with active styling -->
           <label><input type="radio" name="goalOption" value="investment" checked /> Required Investment</label>
           <label><input type="radio" name="goalOption" value="time" /> Time Period Required</label>
           <label><input type="radio" name="goalOption" value="combination" /> Combination</label>
         </div>
-        <!-- For Required Investment mode -->
         <div id="investmentInputs" class="goal-section">
           <label for="goalYears">Time Period (Years):</label>
           <input type="number" id="goalYears" placeholder="Enter years" required />
@@ -161,32 +160,30 @@
             <option value="lumpsum">Lumpsum</option>
             <option value="sip">SIP</option>
           </select>
-          <div id="goalSipInputs" style="display:none;">
+          <div id="goalSipInputs" style="display: none;">
             <label for="goalStepUpPercent">Step-Up Percentage (per year, optional):</label>
             <input type="number" id="goalStepUpPercent" placeholder="e.g., 5" />
           </div>
         </div>
-        <!-- For Time Required mode -->
-        <div id="timeInputs" class="goal-section" style="display:none;">
+        <div id="timeInputs" class="goal-section" style="display: none;">
           <p>Enter your Investment:</p>
           <label for="existingLumpsum">Lumpsum (₹):</label>
           <input type="number" id="existingLumpsum" placeholder="Enter lumpsum" />
           <label for="existingSIP">Monthly SIP (₹):</label>
           <input type="number" id="existingSIP" placeholder="Enter monthly SIP" />
         </div>
-        <!-- For Combination mode -->
-        <div id="combinationInputs" class="goal-section" style="display:none;">
+        <div id="combinationInputs" class="goal-section" style="display: none;">
           <p>Combination Mode: Provide one value and get the complementary amount.</p>
           <label for="comboChoice">Which value are you providing?</label>
           <select id="comboChoice">
             <option value="lumpsum">Lumpsum Provided</option>
             <option value="sip">Monthly SIP Provided</option>
           </select>
-          <div id="comboLumpsum" style="display:none;">
+          <div id="comboLumpsum" style="display: none;">
             <label for="givenLumpsum">Lumpsum Amount (₹):</label>
             <input type="number" id="givenLumpsum" placeholder="Enter lumpsum" />
           </div>
-          <div id="comboSIP" style="display:none;">
+          <div id="comboSIP" style="display: none;">
             <label for="givenSIP">Monthly SIP (₹):</label>
             <input type="number" id="givenSIP" placeholder="Enter monthly SIP" />
           </div>
@@ -289,11 +286,16 @@
         <button class="toggle-btn" data-target="loanContent">&#9776;</button>
       </div>
       <div class="card-content" id="loanContent">
-        <!-- Removed "Mode:" label -->
         <div class="form-group">
-          <label><input type="radio" name="loanMode" value="emi" checked /> Calculate EMI</label>
-          <label><input type="radio" name="loanMode" value="tenure" /> Calculate Tenure</label>
-          <label><input type="radio" name="loanMode" value="rate" /> Calculate Interest Rate</label>
+          <label>
+            <input type="radio" name="loanMode" value="emi" checked /> Calculate EMI
+          </label>
+          <label>
+            <input type="radio" name="loanMode" value="tenure" /> Calculate Tenure
+          </label>
+          <label>
+            <input type="radio" name="loanMode" value="rate" /> Calculate Interest Rate
+          </label>
         </div>
         <div class="form-group" id="loanAmountGroup">
           <label for="loanAmount">Loan Amount (₹):</label>
@@ -307,13 +309,13 @@
           <label for="loanTenure">Loan Tenure (Years):</label>
           <input type="number" id="loanTenure" placeholder="Enter tenure" required />
         </div>
-        <div class="form-group" id="loanEMIGroup" style="display:none;">
+        <div class="form-group" id="loanEMIGroup" style="display: none;">
           <label for="loanEMI">Desired EMI (₹):</label>
           <input type="number" id="loanEMI" placeholder="Enter EMI amount" />
         </div>
         <button id="calcLoan" class="btn">Calculate Loan</button>
         <div id="loanResult" class="result"></div>
-        <canvas id="loanChart" width="400" height="200" style="display:none;"></canvas>
+        <canvas id="loanChart" width="400" height="200" style="display: none;"></canvas>
       </div>
     </section>
   </main>

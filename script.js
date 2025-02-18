@@ -47,13 +47,13 @@ function getNAVForDate(navData, dateStr) {
   return parseFloat(navData[0].nav);
 }
 
-// Format numbers using Indian numbering (e.g., 1,23,456.00)
+// Format numbers in Indian numbering style
 function formatIndianCurrency(num) {
   let x = Number(num).toFixed(2);
   let parts = x.split(".");
   let lastThree = parts[0].slice(-3);
   let otherNumbers = parts[0].slice(0, -3);
-  if(otherNumbers !== "") {
+  if (otherNumbers !== "") {
     lastThree = "," + lastThree;
   }
   let formatted = otherNumbers.replace(/\B(?=(\d{2})+(?!\d))/g, ",") + lastThree;
@@ -71,8 +71,22 @@ function updateSIPChart(labels, investedData, portfolioData) {
     data: {
       labels: labels,
       datasets: [
-        { label: "Total Invested", data: investedData, borderColor: "#0077CC", backgroundColor: "rgba(0,119,204,0.2)", fill: false, tension: 0.1 },
-        { label: "Portfolio Value", data: portfolioData, borderColor: "#FF6600", backgroundColor: "rgba(255,102,0,0.2)", fill: false, tension: 0.1 }
+        {
+          label: "Total Invested",
+          data: investedData,
+          borderColor: "#0077CC",
+          backgroundColor: "rgba(0,119,204,0.2)",
+          fill: false,
+          tension: 0.1
+        },
+        {
+          label: "Portfolio Value",
+          data: portfolioData,
+          borderColor: "#FF6600",
+          backgroundColor: "rgba(255,102,0,0.2)",
+          fill: false,
+          tension: 0.1
+        }
       ]
     },
     options: {
@@ -94,7 +108,14 @@ function updateLumpsumChart(labels, portfolioData) {
     data: {
       labels: labels,
       datasets: [
-        { label: "Portfolio Value", data: portfolioData, borderColor: "#FF6600", backgroundColor: "rgba(255,102,0,0.2)", fill: false, tension: 0.1 }
+        {
+          label: "Portfolio Value",
+          data: portfolioData,
+          borderColor: "#FF6600",
+          backgroundColor: "rgba(255,102,0,0.2)",
+          fill: false,
+          tension: 0.1
+        }
       ]
     },
     options: {
@@ -116,7 +137,14 @@ function updateLoanChart(labels, dataPoints) {
     data: {
       labels: labels,
       datasets: [
-        { label: "EMI Variation", data: dataPoints, borderColor: "#0077CC", backgroundColor: "rgba(0,119,204,0.2)", fill: false, tension: 0.1 }
+        {
+          label: "EMI Variation",
+          data: dataPoints,
+          borderColor: "#0077CC",
+          backgroundColor: "rgba(0,119,204,0.2)",
+          fill: false,
+          tension: 0.1
+        }
       ]
     },
     options: {
@@ -350,7 +378,6 @@ function calculateSWP(navData, startDateStr, endDateStr, initialPortfolio, withd
     previousNAV = currentNAV;
     currentDate.setMonth(currentDate.getMonth() + 1);
   }
-  // Total return now calculated as Final - Initial
   const totalReturn = currentPortfolio - initialPortfolio;
   const returnPct = (totalReturn / initialPortfolio) * 100;
   const totalYears = (endDate - startDate) / (365.25 * 24 * 3600 * 1000);
@@ -469,11 +496,13 @@ function simulateSIPForGoal(navData, startDate, endDate, initialSIP, stepUpPerce
   const endNAV = getNAVForDate(navData, formatDate(endDate));
   return totalUnits * endNAV;
 }
+
 function calculateLumpsumForGoalUsingHistory(navData, startDate, endDate, target) {
   const startNAV = getNAVForDate(navData, formatDate(startDate));
   const endNAV = getNAVForDate(navData, formatDate(endDate));
   return target * (startNAV / endNAV);
 }
+
 function solveRequiredSIPForGoal(target, navData, years, stepUpPercent) {
   const startDate = new Date();
   const endDate = new Date();
@@ -600,11 +629,13 @@ function calculateLoanEMI(loanAmount, annualInterestRate, tenureYears) {
   const totalInterest = totalPayment - loanAmount;
   return { EMI, totalInterest, totalPayment };
 }
+
 function calculateLoanTenure(loanAmount, annualInterestRate, EMI) {
   const r = annualInterestRate / 100 / 12;
   const n = Math.log(EMI / (EMI - loanAmount * r)) / Math.log(1 + r);
   return n / 12; // in years
 }
+
 function calculateLoanRate(loanAmount, EMI, tenureYears) {
   const n = tenureYears * 12;
   let low = 0, high = 1, mid;
@@ -619,6 +650,7 @@ function calculateLoanRate(loanAmount, EMI, tenureYears) {
   }
   return mid * 12 * 100; // convert monthly rate to annual percentage
 }
+
 function simulateLoanEMI(loanAmount, annualInterestRate, tenureYears) {
   const dataPoints = [];
   const labels = [];
@@ -631,6 +663,7 @@ function simulateLoanEMI(loanAmount, annualInterestRate, tenureYears) {
   }
   updateLoanChart(labels, dataPoints);
 }
+
 document.getElementById("calcLoan").addEventListener("click", function() {
   const loanMode = document.querySelector('input[name="loanMode"]:checked').value;
   if (loanMode === "emi") {
@@ -664,6 +697,7 @@ document.getElementById("calcLoan").addEventListener("click", function() {
     document.getElementById("loanChart").style.display = "none";
   }
 });
+
 document.querySelectorAll('input[name="loanMode"]').forEach(radio => {
   radio.addEventListener("change", function() {
     const mode = this.value;
@@ -687,14 +721,14 @@ document.querySelectorAll('input[name="loanMode"]').forEach(radio => {
 });
 
 // ====================================
-// Toggle Button Functionality (Fixed)
+// Toggle Button Functionality using Class Toggle
 // ====================================
-document.querySelectorAll(".toggle-btn").forEach(btn => {
-  btn.addEventListener("click", function() {
-    const targetId = this.getAttribute("data-target");
-    const content = document.getElementById(targetId);
-    // Use computed style to check current display
-    const currentDisplay = window.getComputedStyle(content).display;
-    content.style.display = (currentDisplay === "none") ? "block" : "none";
+document.addEventListener("DOMContentLoaded", function() {
+  document.querySelectorAll(".toggle-btn").forEach(btn => {
+    btn.addEventListener("click", function() {
+      const targetId = this.getAttribute("data-target");
+      const content = document.getElementById(targetId);
+      content.classList.toggle("active");
+    });
   });
 });
