@@ -5,6 +5,9 @@ body {
   font-family: 'Montserrat', sans-serif;
   background-color: #f7f7f7;
   color: #333;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
 }
 
 .container {
@@ -30,6 +33,12 @@ header p {
   font-size: 1.2em;
 }
 
+/* Main Content */
+main {
+  flex: 1;
+  padding: 20px 0;
+}
+
 /* Cards */
 .card {
   background-color: #fff;
@@ -53,11 +62,10 @@ header p {
   font-size: 1.5em;
 }
 .toggle-btn {
-  background-color: #0077CC;
+  background: none;
   border: none;
+  font-size: 1.5em;
   color: #fff;
-  padding: 8px 12px;
-  border-radius: 4px;
   cursor: pointer;
 }
 .card-content {

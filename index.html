@@ -4,11 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Magha Advisory Dashboard</title>
-  <!-- Google Fonts: Montserrat for a modern, professional look -->
+  <!-- Google Fonts: Montserrat for a modern professional look -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&display=swap" rel="stylesheet">
-  <!-- Chart.js CDN for graphs -->
+  <!-- Chart.js CDN -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link rel="stylesheet" href="style.css" />
 </head>
@@ -21,13 +21,11 @@
   </header>
   
   <main class="container">
-    <!-- Each section is a collapsible card -->
-    
-    <!-- Mutual Fund Selector & Latest NAV (global to investment calculators) -->
+    <!-- Mutual Fund Selector (used for investment calculators) -->
     <section class="card" id="fundSection">
       <div class="card-header">
         <h2>Mutual Fund Selector</h2>
-        <button class="toggle-btn" data-target="fundContent">Toggle</button>
+        <button class="toggle-btn" data-target="fundContent">&#9776;</button>
       </div>
       <div class="card-content" id="fundContent">
         <div class="form-group">
@@ -46,7 +44,7 @@
     <section class="card" id="sipSection">
       <div class="card-header">
         <h2>SIP Calculator</h2>
-        <button class="toggle-btn" data-target="sipContent">Toggle</button>
+        <button class="toggle-btn" data-target="sipContent">&#9776;</button>
       </div>
       <div class="card-content" id="sipContent">
         <div class="form-group">
@@ -69,12 +67,12 @@
           </select>
         </div>
         <div class="form-group" id="stepUpContainer" style="display:none;">
-          <label for="stepUpPercent">Step-Up Percentage (per year):</label>
+          <label for="stepUpPercent">Step-Up Percentage (per year, optional):</label>
           <input type="number" id="stepUpPercent" placeholder="e.g., 5" />
         </div>
         <button id="calcSIP" class="btn">Calculate SIP</button>
         <div id="sipResult" class="result"></div>
-        <canvas id="sipChart" width="400" height="200"></canvas>
+        <canvas id="sipChart" width="400" height="200" style="display:none;"></canvas>
       </div>
     </section>
 
@@ -82,7 +80,7 @@
     <section class="card" id="swpSection">
       <div class="card-header">
         <h2>SWP Calculator</h2>
-        <button class="toggle-btn" data-target="swpContent">Toggle</button>
+        <button class="toggle-btn" data-target="swpContent">&#9776;</button>
       </div>
       <div class="card-content" id="swpContent">
         <div class="form-group">
@@ -103,6 +101,8 @@
         </div>
         <button id="calcSWP" class="btn">Calculate SWP</button>
         <div id="swpResult" class="result"></div>
+        <!-- Pie chart for SWP breakdown -->
+        <canvas id="swpPieChart" width="400" height="200" style="display:none;"></canvas>
       </div>
     </section>
 
@@ -110,7 +110,7 @@
     <section class="card" id="lumpsumSection">
       <div class="card-header">
         <h2>Lumpsum Calculator</h2>
-        <button class="toggle-btn" data-target="lumpsumContent">Toggle</button>
+        <button class="toggle-btn" data-target="lumpsumContent">&#9776;</button>
       </div>
       <div class="card-content" id="lumpsumContent">
         <div class="form-group">
@@ -127,15 +127,15 @@
         </div>
         <button id="calcLumpsum" class="btn">Calculate Lumpsum</button>
         <div id="lumpsumResult" class="result"></div>
-        <canvas id="lumpsumChart" width="400" height="200"></canvas>
+        <canvas id="lumpsumChart" width="400" height="200" style="display:none;"></canvas>
       </div>
     </section>
 
-    <!-- Goal Based Planner Section (Independent from Mutual Fund Selector) -->
+    <!-- Goal Based Planner Section (Independent) -->
     <section class="card" id="goalSection">
       <div class="card-header">
         <h2>Goal Based Planner</h2>
-        <button class="toggle-btn" data-target="goalContent">Toggle</button>
+        <button class="toggle-btn" data-target="goalContent">&#9776;</button>
       </div>
       <div class="card-content" id="goalContent">
         <div class="form-group">
@@ -162,7 +162,7 @@
             <option value="sip">SIP</option>
           </select>
           <div id="goalSipInputs" style="display:none;">
-            <label for="goalStepUpPercent">Step-Up Percentage (per year):</label>
+            <label for="goalStepUpPercent">Step-Up Percentage (per year, optional):</label>
             <input type="number" id="goalStepUpPercent" placeholder="e.g., 5" />
           </div>
         </div>
@@ -202,7 +202,7 @@
     <section class="card" id="retirementSection">
       <div class="card-header">
         <h2>Retirement Planner</h2>
-        <button class="toggle-btn" data-target="retirementContent">Toggle</button>
+        <button class="toggle-btn" data-target="retirementContent">&#9776;</button>
       </div>
       <div class="card-content" id="retirementContent">
         <div class="form-group">
@@ -222,16 +222,12 @@
           <input type="number" id="monthlyContributionRet" placeholder="Enter monthly contribution" required />
         </div>
         <div class="form-group">
-          <label for="retStepUp">Step-Up % for Contribution (per year):</label>
-          <input type="number" id="retStepUp" placeholder="e.g., 3 (optional)" />
+          <label for="retStepUp">Step-Up % for Contribution (per year, optional):</label>
+          <input type="number" id="retStepUp" placeholder="e.g., 3" />
         </div>
         <div class="form-group">
-          <input type="checkbox" id="retInflationChk" />
-          <label for="retInflationChk">Adjust for Inflation</label>
-        </div>
-        <div class="form-group" id="retInflationContainer" style="display:none;">
-          <label for="retInflationRate">Inflation Rate (%):</label>
-          <input type="number" id="retInflationRate" placeholder="e.g., 5 (optional)" step="0.1" />
+          <label for="retInflationRate">Inflation Rate (optional) (%):</label>
+          <input type="number" id="retInflationRate" placeholder="e.g., 5" step="0.1" />
         </div>
         <div class="form-group">
           <label for="retAnnualReturn">Expected Annual Return (%):</label>
@@ -246,7 +242,7 @@
     <section class="card" id="educationSection">
       <div class="card-header">
         <h2>Children Education Planner</h2>
-        <button class="toggle-btn" data-target="educationContent">Toggle</button>
+        <button class="toggle-btn" data-target="educationContent">&#9776;</button>
       </div>
       <div class="card-content" id="educationContent">
         <div class="form-group">
@@ -255,23 +251,19 @@
         </div>
         <div class="form-group">
           <label for="eduAge">Desired Education Age:</label>
-          <input type="number" id="eduAge" placeholder="Enter age at which education is needed" required />
+          <input type="number" id="eduAge" placeholder="Enter education age" required />
         </div>
         <div class="form-group">
           <label for="currentCostEdu">Estimated Cost Today (₹):</label>
           <input type="number" id="currentCostEdu" placeholder="Enter cost today" required />
         </div>
         <div class="form-group">
-          <label for="eduStepUp">Step-Up % for Contribution (per year):</label>
-          <input type="number" id="eduStepUp" placeholder="e.g., 3 (optional)" />
+          <label for="eduStepUp">Step-Up % for Contribution (per year, optional):</label>
+          <input type="number" id="eduStepUp" placeholder="e.g., 3" />
         </div>
         <div class="form-group">
-          <input type="checkbox" id="eduInflationChk" />
-          <label for="eduInflationChk">Adjust for Inflation</label>
-        </div>
-        <div class="form-group" id="eduInflationContainer" style="display:none;">
-          <label for="eduInflationRate">Inflation Rate (%):</label>
-          <input type="number" id="eduInflationRate" placeholder="e.g., 5 (optional)" step="0.1" />
+          <label for="eduInflationRate">Inflation Rate (optional) (%):</label>
+          <input type="number" id="eduInflationRate" placeholder="e.g., 5" step="0.1" />
         </div>
         <div class="form-group">
           <label for="eduAnnualReturn">Expected Annual Return (%):</label>
@@ -294,11 +286,11 @@
     <section class="card" id="loanSection">
       <div class="card-header">
         <h2>Loan Calculator</h2>
-        <button class="toggle-btn" data-target="loanContent">Toggle</button>
+        <button class="toggle-btn" data-target="loanContent">&#9776;</button>
       </div>
       <div class="card-content" id="loanContent">
+        <!-- Removed "Mode:" label -->
         <div class="form-group">
-          <label>Mode:</label>
           <label><input type="radio" name="loanMode" value="emi" checked /> Calculate EMI</label>
           <label><input type="radio" name="loanMode" value="tenure" /> Calculate Tenure</label>
           <label><input type="radio" name="loanMode" value="rate" /> Calculate Interest Rate</label>
@@ -321,7 +313,7 @@
         </div>
         <button id="calcLoan" class="btn">Calculate Loan</button>
         <div id="loanResult" class="result"></div>
-        <canvas id="loanChart" width="400" height="200"></canvas>
+        <canvas id="loanChart" width="400" height="200" style="display:none;"></canvas>
       </div>
     </section>
   </main>

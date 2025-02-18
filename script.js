@@ -2,7 +2,7 @@
 // Global Variables for Charts and Funds
 // ====================================
 let sipChart, lumpsumChart, loanChart;
-let allFunds = []; // Store full mutual fund list
+let allFunds = []; // Global store for mutual fund data
 
 // ====================================
 // Helper Functions
@@ -61,6 +61,7 @@ function updateSIPChart(labels, investedData, portfolioData) {
       plugins: { legend: { labels: { color: "#222" } } }
     }
   });
+  document.getElementById("sipChart").style.display = "block";
 }
 function updateLumpsumChart(dates, portfolioData) {
   const ctx = document.getElementById("lumpsumChart").getContext("2d");
@@ -78,6 +79,7 @@ function updateLumpsumChart(dates, portfolioData) {
       plugins: { legend: { labels: { color: "#222" } } }
     }
   });
+  document.getElementById("lumpsumChart").style.display = "block";
 }
 function updateLoanChart(labels, dataPoints) {
   const ctx = document.getElementById("loanChart").getContext("2d");
@@ -95,6 +97,26 @@ function updateLoanChart(labels, dataPoints) {
       plugins: { legend: { labels: { color: "#222" } } }
     }
   });
+  document.getElementById("loanChart").style.display = "block";
+}
+function updateSWPPieChart(withdrawn, finalPortfolio) {
+  // Create a pie chart showing withdrawn vs. current investment
+  const ctx = document.getElementById("swpPieChart").getContext("2d");
+  if (window.swpPieChart) window.swpPieChart.destroy();
+  window.swpPieChart = new Chart(ctx, {
+    type: "pie",
+    data: {
+      labels: ["Withdrawn", "Current Investment"],
+      datasets: [{
+        data: [withdrawn, finalPortfolio],
+        backgroundColor: ["#FF6600", "#0077CC"]
+      }]
+    },
+    options: {
+      plugins: { legend: { labels: { color: "#222" } } }
+    }
+  });
+  document.getElementById("swpPieChart").style.display = "block";
 }
 
 // ====================================
@@ -255,7 +277,7 @@ document.getElementById("calcSIP").addEventListener("click", function () {
   const endDate = document.getElementById("endDate").value;
   const sipAmount = parseFloat(document.getElementById("sipAmount").value);
   const sipType = document.getElementById("sipType").value;
-  const stepUpPercent = sipType === "stepup" ? parseFloat(document.getElementById("stepUpPercent").value) : 0;
+  const stepUpPercent = sipType === "stepup" ? parseFloat(document.getElementById("stepUpPercent").value) || 0 : 0;
   fetchHistoricalData(fundId)
     .then(navData => {
       const result = calculateSIP(navData, startDate, endDate, sipAmount, sipType, stepUpPercent);
@@ -292,12 +314,11 @@ function calculateSWP(navData, startDateStr, endDateStr, initialPortfolio, withd
     monthCount++;
     currentDate.setMonth(currentDate.getMonth() + 1);
   }
-  const totalWithdrawn = withdrawal * monthCount;
-  const totalReturn = (currentPortfolio + totalWithdrawn) - initialPortfolio;
-  const returnPct = ((currentPortfolio - initialPortfolio) / initialPortfolio) * 100;
   const totalYears = (endDate - startDate) / (365.25 * 24 * 3600 * 1000);
-  const CAGR = Math.pow((currentPortfolio + totalWithdrawn) / initialPortfolio, 1 / totalYears) - 1;
-  return { finalPortfolio: currentPortfolio.toFixed(2), totalWithdrawn: totalWithdrawn.toFixed(2), totalReturn: totalReturn.toFixed(2), CAGR: (CAGR * 100).toFixed(2), returnPct: returnPct.toFixed(2) };
+  const CAGR = Math.pow(currentPortfolio / initialPortfolio, 1 / totalYears) - 1;
+  const totalReturn = currentPortfolio - initialPortfolio;
+  const returnPct = (totalReturn / initialPortfolio) * 100;
+  return { finalPortfolio: currentPortfolio.toFixed(2), totalReturn: totalReturn.toFixed(2), CAGR: (CAGR * 100).toFixed(2), returnPct: returnPct.toFixed(2) };
 }
 document.getElementById("calcSWP").addEventListener("click", function () {
   const fundId = getSelectedFundId();
@@ -311,11 +332,13 @@ document.getElementById("calcSWP").addEventListener("click", function () {
       const result = calculateSWP(navData, swpStartDate, swpEndDate, initialPortfolio, withdrawal);
       document.getElementById("swpResult").innerHTML =
         `<h3>SWP Calculation Results:</h3>
-         <p>Total Withdrawn: ₹${result.totalWithdrawn}</p>
          <p>Final Portfolio Value: ₹${result.finalPortfolio}</p>
-         <p>Total Return (Final + Withdrawals - Initial): ₹${result.totalReturn}</p>
+         <p>Total Return: ₹${result.totalReturn}</p>
          <p>CAGR: ${result.CAGR}%</p>
          <p>Return (%): ${result.returnPct}%</p>`;
+      // Update a pie chart: withdrawn = (initialPortfolio + withdrawal*monthCount - currentPortfolio)? 
+      // For simplicity, we show portions: current vs. initial.
+      updateSWPPieChart(initialPortfolio - result.totalReturn, result.finalPortfolio);
     })
     .catch(err => {
       console.error("Error fetching historical NAV data for SWP:", err);
@@ -357,6 +380,7 @@ function updateLumpsumChart(navData, startDateStr, endDateStr, lumpsumAmount) {
     data: { labels: dates, datasets: [ { label: "Portfolio Value (₹)", data: portfolioArr, borderColor: "#FF6600", backgroundColor: "rgba(255,102,0,0.2)", fill: false, tension: 0.1 } ] },
     options: { scales: { x: { ticks: { color: "#222" }, grid: { color: "#ccc" } }, y: { ticks: { color: "#222" }, grid: { color: "#ccc" } } }, plugins: { legend: { labels: { color: "#222" } } } }
   });
+  document.getElementById("lumpsumChart").style.display = "block";
 }
 document.getElementById("calcLumpsum").addEventListener("click", function () {
   const fundId = getSelectedFundId();
@@ -381,7 +405,7 @@ document.getElementById("calcLumpsum").addEventListener("click", function () {
 });
 
 // ====================================
-// Goal Based Planner Calculator
+// Goal Based Planner Calculator (Independent)
 // ====================================
 function simulateSIPForGoal(navData, startDate, endDate, initialSIP, stepUpPercent) {
   let totalInvested = 0, totalUnits = 0;
@@ -522,7 +546,7 @@ document.getElementById("investmentMode").addEventListener("change", function() 
 // ====================================
 // Retirement Planner Calculator
 // ====================================
-function calculateRetirementCorpus(currentSavings, monthlyContribution, years, stepUp, annualReturn, inflationEnabled, inflationRate) {
+function calculateRetirementCorpus(currentSavings, monthlyContribution, years, stepUp, annualReturn, inflationRate) {
   const n = years * 12;
   const r = annualReturn / 100 / 12;
   let corpusFromSavings = currentSavings * Math.pow(1 + r, n);
@@ -533,10 +557,8 @@ function calculateRetirementCorpus(currentSavings, monthlyContribution, years, s
     corpusFromContributions += contribution * Math.pow(1 + r, n - m);
   }
   let totalCorpus = corpusFromSavings + corpusFromContributions;
-  if (inflationEnabled) {
-    const monthlyInflation = inflationRate / 100 / 12;
-    totalCorpus = totalCorpus / Math.pow(1 + monthlyInflation, n);
-  }
+  // Optional: if inflation rate is provided, adjust corpus to today's value
+  totalCorpus = inflationRate ? totalCorpus / Math.pow(1 + (inflationRate / 100) / 12, n) : totalCorpus;
   return totalCorpus;
 }
 document.getElementById("calcRetirement").addEventListener("click", function() {
@@ -546,16 +568,12 @@ document.getElementById("calcRetirement").addEventListener("click", function() {
   const monthlyContribution = parseFloat(document.getElementById("monthlyContributionRet").value);
   const stepUp = parseFloat(document.getElementById("retStepUp").value) || 0;
   const annualReturn = parseFloat(document.getElementById("retAnnualReturn").value);
+  const inflationRate = parseFloat(document.getElementById("retInflationRate").value) || 0;
   const years = retirementAge - currentAge;
-  const inflationEnabled = document.getElementById("retInflationChk").checked;
-  const inflationRate = inflationEnabled ? parseFloat(document.getElementById("retInflationRate").value) || 0 : 0;
-  const corpus = calculateRetirementCorpus(currentSavings, monthlyContribution, years, stepUp, annualReturn, inflationEnabled, inflationRate);
+  const corpus = calculateRetirementCorpus(currentSavings, monthlyContribution, years, stepUp, annualReturn, inflationRate);
   document.getElementById("retirementResult").innerHTML =
     `<h3>Retirement Planner Results:</h3>
      <p>Estimated Corpus at Retirement: ₹${corpus.toFixed(2)}</p>`;
-});
-document.getElementById("retInflationChk").addEventListener("change", function() {
-  document.getElementById("retInflationContainer").style.display = this.checked ? "block" : "none";
 });
 
 // ====================================
