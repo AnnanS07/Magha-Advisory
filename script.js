@@ -55,7 +55,7 @@ function formatIndianCurrency(num) {
 // ====================================
 // Chart Update Functions
 // ====================================
-// The x-axis still uses the original date strings; we add autoSkip options to prevent overcrowding.
+// We retain the original date labels while adding autoSkip options to reduce clutter.
 function updateSIPChart(labels, investedData, portfolioData) {
   const ctx = document.getElementById("sipChart").getContext("2d");
   if (sipChart) sipChart.destroy();
@@ -138,7 +138,7 @@ function updateSWPPieChart(totalWithdrawals, finalPortfolio) {
       datasets: [{
         data: [totalWithdrawals, finalPortfolio],
         backgroundColor: ["#FF6600", "#0077CC"]
-        // Border options removed for a seamless look.
+        // No border defined, so it blends with the background.
       }]
     },
     options: {
@@ -339,37 +339,39 @@ document.getElementById("sipType").addEventListener("change", function() {
 });
 
 // ====================================
-// SWP Calculator (Updated per requirements)
+// SWP Calculator (Revised Simulation)
 // ====================================
-// Calculates current investment value as: initialPortfolio * (finalNAV / initialNAV)
-// and total withdrawn as: withdrawal * number_of_months.
+// This function simulates the SWP process month-by-month. In each iteration, it moves to the next month,
+// applies the growth factor (based on NAV change) and subtracts the withdrawal. The total withdrawn is 
+// computed as (withdrawal * number_of_months).
 function calculateSWP(navData, startDateStr, endDateStr, initialPortfolio, withdrawal) {
+  let portfolio = initialPortfolio;
   const startDate = parseDate(startDateStr);
   const endDate = parseDate(endDateStr);
   
-  // Get initial and final NAV.
-  const initialNAV = getNAVForDate(navData, formatDate(startDate));
-  const finalNAV = getNAVForDate(navData, formatDate(endDate));
+  // Set previous NAV at the start date.
+  let previousNAV = getNAVForDate(navData, formatDate(startDate));
+  let currentDate = new Date(startDate);
+  let monthCount = 0;
   
-  // Calculate current investment value based on NAV growth.
-  const currentInvestment = initialPortfolio * (finalNAV / initialNAV);
+  // Loop until we reach the end date.
+  while (currentDate < endDate) {
+    currentDate.setMonth(currentDate.getMonth() + 1);
+    monthCount++;
+    let currentNAV = getNAVForDate(navData, formatDate(currentDate));
+    // Apply growth and then subtract the fixed withdrawal.
+    portfolio = portfolio * (currentNAV / previousNAV) - withdrawal;
+    previousNAV = currentNAV;
+  }
   
-  // Calculate number of months between start and end dates.
-  const months = ((endDate.getFullYear() - startDate.getFullYear()) * 12) +
-                 (endDate.getMonth() - startDate.getMonth()) + 1;
-  
-  // Total withdrawn is withdrawal per month multiplied by number of months.
-  const totalWithdrawn = withdrawal * months;
-  
-  // Performance metrics.
-  const totalReturn = currentInvestment - initialPortfolio;
+  const totalReturn = portfolio - initialPortfolio;
   const returnPct = (totalReturn / initialPortfolio) * 100;
   const years = (endDate - startDate) / (365.25 * 24 * 3600 * 1000);
-  const CAGR = Math.pow(currentInvestment / initialPortfolio, 1 / years) - 1;
+  const CAGR = Math.pow(portfolio / initialPortfolio, 1 / years) - 1;
   
   return {
-    finalPortfolio: currentInvestment.toFixed(2),
-    totalWithdrawals: totalWithdrawn.toFixed(2),
+    finalPortfolio: portfolio.toFixed(2),
+    totalWithdrawals: (withdrawal * monthCount).toFixed(2),
     totalReturn: totalReturn.toFixed(2),
     CAGR: (CAGR * 100).toFixed(2),
     returnPct: returnPct.toFixed(2)
