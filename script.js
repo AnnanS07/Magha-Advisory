@@ -55,7 +55,6 @@ function formatIndianCurrency(num) {
 // ====================================
 // Chart Update Functions
 // ====================================
-// We retain the original date labels while adding autoSkip options to reduce clutter.
 function updateSIPChart(labels, investedData, portfolioData) {
   const ctx = document.getElementById("sipChart").getContext("2d");
   if (sipChart) sipChart.destroy();
@@ -138,7 +137,6 @@ function updateSWPPieChart(totalWithdrawals, finalPortfolio) {
       datasets: [{
         data: [totalWithdrawals, finalPortfolio],
         backgroundColor: ["#FF6600", "#0077CC"]
-        // No border defined, so it blends with the background.
       }]
     },
     options: {
@@ -175,7 +173,6 @@ function filterFundList(query) {
   const fundList = document.getElementById("fundList");
   fundList.innerHTML = "";
   const filtered = allFunds.filter(fund => fund.schemeName.toLowerCase().includes(query.toLowerCase()));
-  // Limit the list to only 10 items.
   const limited = filtered.slice(0, 10);
   limited.forEach(fund => {
     const option = document.createElement("option");
@@ -272,22 +269,17 @@ function getAnniversaryCount(startDate, currentDate) {
 // ====================================
 function calculateSIP(navData, startDateStr, endDateStr, sipAmount, sipType, stepUpPercent = 0) {
   let totalInvested = 0, totalUnits = 0;
-  let startDate = parseDate(startDateStr), endDate = parseDate(endDateStr);
-  const earliestDate = parseDate(navData[0].date);
-  if (startDate < earliestDate) {
-    console.warn("Start date is before available data. Using earliest date:", navData[0].date);
-    startDate = earliestDate;
-  }
-  let currentDate = new Date(startDate);
+  let startD = parseDate(startDateStr), endD = parseDate(endDateStr);
+  let currentD = new Date(startD);
   const dates = [], investedArr = [], portfolioArr = [];
-  while (currentDate <= endDate) {
+  while (currentD <= endD) {
     let currentSipAmount = sipAmount;
-    if (sipType === "stepup") {
-      const anniversaries = getAnniversaryCount(startDate, currentDate);
-      currentSipAmount = sipAmount * Math.pow(1 + (stepUpPercent / 100), anniversaries);
+    if (sipType === 'stepup') {
+      const yearsPassed = currentD.getFullYear() - startD.getFullYear();
+      currentSipAmount = sipAmount * Math.pow(1 + (stepUpPercent / 100), yearsPassed);
     }
-    const dateStr = formatDate(currentDate);
-    let navValue = getNAVForDate(navData, dateStr);
+    const dateStr = formatDate(currentD);
+    const navValue = getNAVForDate(navData, dateStr);
     if (!isNaN(navValue)) {
       const units = currentSipAmount / navValue;
       totalUnits += units;
@@ -296,11 +288,11 @@ function calculateSIP(navData, startDateStr, endDateStr, sipAmount, sipType, ste
       investedArr.push(totalInvested.toFixed(2));
       portfolioArr.push((totalUnits * navValue).toFixed(2));
     }
-    currentDate.setMonth(currentDate.getMonth() + 1);
+    currentD.setMonth(currentD.getMonth() + 1);
   }
-  const endNAV = getNAVForDate(navData, formatDate(endDate));
+  const endNAV = getNAVForDate(navData, formatDate(endD));
   const finalValue = totalUnits * endNAV;
-  const totalYears = (endDate - startDate) / (365.25 * 24 * 3600 * 1000);
+  const totalYears = (endD - startD) / (365.25 * 24 * 3600 * 1000);
   const CAGR = Math.pow(finalValue / totalInvested, 1 / totalYears) - 1;
   const returnPct = ((finalValue - totalInvested) / totalInvested) * 100;
   updateSIPChart(dates, investedArr, portfolioArr);
@@ -308,7 +300,8 @@ function calculateSIP(navData, startDateStr, endDateStr, sipAmount, sipType, ste
     totalInvested: totalInvested.toFixed(2), 
     finalValue: finalValue.toFixed(2), 
     CAGR: (CAGR * 100).toFixed(2), 
-    returnPct: returnPct.toFixed(2) 
+    returnPct: returnPct.toFixed(2),
+    dates, investedArr, portfolioArr
   };
 }
 document.getElementById("calcSIP").addEventListener("click", function () {
@@ -339,36 +332,27 @@ document.getElementById("sipType").addEventListener("change", function() {
 });
 
 // ====================================
-// SWP Calculator (Revised Simulation)
+// SWP Calculator
 // ====================================
-// This function simulates the SWP process month-by-month. In each iteration, it moves to the next month,
-// applies the growth factor (based on NAV change) and subtracts the withdrawal. The total withdrawn is 
-// computed as (withdrawal * number_of_months).
 function calculateSWP(navData, startDateStr, endDateStr, initialPortfolio, withdrawal) {
   let portfolio = initialPortfolio;
   const startDate = parseDate(startDateStr);
   const endDate = parseDate(endDateStr);
-  
-  // Set previous NAV at the start date.
   let previousNAV = getNAVForDate(navData, formatDate(startDate));
   let currentDate = new Date(startDate);
   let monthCount = 0;
-  
-  // Loop until we reach the end date.
   while (currentDate < endDate) {
     currentDate.setMonth(currentDate.getMonth() + 1);
     monthCount++;
-    let currentNAV = getNAVForDate(navData, formatDate(currentDate));
-    // Apply growth and then subtract the fixed withdrawal.
+    const currentNAV = getNAVForDate(navData, formatDate(currentDate));
+    // First, grow portfolio by the NAV ratio, then subtract withdrawal.
     portfolio = portfolio * (currentNAV / previousNAV) - withdrawal;
     previousNAV = currentNAV;
   }
-  
   const totalReturn = portfolio - initialPortfolio;
   const returnPct = (totalReturn / initialPortfolio) * 100;
   const years = (endDate - startDate) / (365.25 * 24 * 3600 * 1000);
   const CAGR = Math.pow(portfolio / initialPortfolio, 1 / years) - 1;
-  
   return {
     finalPortfolio: portfolio.toFixed(2),
     totalWithdrawals: (withdrawal * monthCount).toFixed(2),
@@ -387,7 +371,6 @@ document.getElementById("calcSWP").addEventListener("click", function () {
   const swpEndDate = document.getElementById("swpEndDate").value;
   const initialPortfolio = parseFloat(document.getElementById("initialPortfolio").value);
   const withdrawal = parseFloat(document.getElementById("withdrawalAmount").value);
-  
   fetchHistoricalData(fundId)
     .then(navData => {
       const result = calculateSWP(navData, swpStartDate, swpEndDate, initialPortfolio, withdrawal);
@@ -410,8 +393,8 @@ document.getElementById("calcSWP").addEventListener("click", function () {
 // Lumpsum Calculator
 // ====================================
 function calculateLumpsum(navData, startDateStr, endDateStr, lumpsumAmount) {
-  const startDate = parseDate(startDateStr),
-        endDate = parseDate(endDateStr);
+  const startDate = parseDate(startDateStr);
+  const endDate = parseDate(endDateStr);
   const startNAV = getNAVForDate(navData, formatDate(startDate));
   const endNAV = getNAVForDate(navData, formatDate(endDate));
   const finalValue = lumpsumAmount * (endNAV / startNAV);
@@ -425,27 +408,36 @@ function calculateLumpsum(navData, startDateStr, endDateStr, lumpsumAmount) {
   };
 }
 function updateLumpsumChart(navData, startDateStr, endDateStr, lumpsumAmount) {
-  let startDate = parseDate(startDateStr),
-      endDate = parseDate(endDateStr);
-  const dates = [],
-        portfolioArr = [];
+  let startDate = parseDate(startDateStr);
+  let endDate = parseDate(endDateStr);
+  const dates = [];
+  const portfolioArr = [];
   let currentDate = new Date(startDate);
   const startNAV = getNAVForDate(navData, formatDate(startDate));
   let units = lumpsumAmount / startNAV;
   while (currentDate <= endDate) {
     const dateStr = formatDate(currentDate);
-    let navValue = getNAVForDate(navData, dateStr);
-    const portfolioVal = units * navValue;
+    const navValue = getNAVForDate(navData, dateStr);
     dates.push(dateStr);
-    portfolioArr.push(portfolioVal.toFixed(2));
+    portfolioArr.push((units * navValue).toFixed(2));
     currentDate.setMonth(currentDate.getMonth() + 1);
   }
   const ctx = document.getElementById("lumpsumChart").getContext("2d");
   if (lumpsumChart) lumpsumChart.destroy();
   lumpsumChart = new Chart(ctx, {
     type: "line",
-    data: { labels: dates, datasets: [ { label: "Portfolio Value (₹)", data: portfolioArr, borderColor: "#FF6600", backgroundColor: "rgba(255,102,0,0.2)", fill: false, tension: 0.1 } ] },
-    options: { 
+    data: {
+      labels: dates,
+      datasets: [{
+        label: "Portfolio Value (₹)",
+        data: portfolioArr,
+        borderColor: "#FF6600",
+        backgroundColor: "rgba(255,102,0,0.2)",
+        fill: false,
+        tension: 0.1
+      }]
+    },
+    options: {
       scales: { 
         x: { 
           ticks: { autoSkip: true, maxTicksLimit: 12, color: "#222" },
@@ -553,6 +545,7 @@ document.addEventListener("DOMContentLoaded", function() {
 // ====================================
 // Loan Calculator
 // ====================================
+// Define helper functions for loan calculation
 function calculateLoanEMI(loanAmount, annualInterestRate, tenureYears) {
   const r = annualInterestRate / 100 / 12;
   const n = tenureYears * 12;
@@ -573,30 +566,13 @@ function simulateLoanEMI(loanAmount, annualInterestRate, tenureYears) {
   }
   updateLoanChart(labels, dataPoints);
 }
-document.getElementById("calcLoan").addEventListener("click", function() {
-  const loanMode = document.querySelector('input[name="loanMode"]:checked').value;
-  if (loanMode === "emi") {
-    const loanAmount = parseFloat(document.getElementById("loanAmount").value);
-    const loanInterest = parseFloat(document.getElementById("loanInterest").value);
-    const loanTenure = parseFloat(document.getElementById("loanTenure").value);
-    const result = calculateLoanEMI(loanAmount, loanInterest, loanTenure);
-    document.getElementById("loanResult").innerHTML =
-      `<h3>Loan Calculator Results (EMI Mode):</h3>
-       <p>Monthly EMI: ${formatIndianCurrency(result.EMI)}</p>
-       <p>Total Interest Payable: ${formatIndianCurrency(result.totalInterest)}</p>
-       <p>Total Payment: ${formatIndianCurrency(result.totalPayment)}</p>`;
-    simulateLoanEMI(loanAmount, loanInterest, loanTenure);
-  } else if (loanMode === "tenure") {
-    document.getElementById("loanResult").innerHTML =
-      `<h3>Loan Calculator Results (Tenure Mode):</h3><p>Feature under development.</p>`;
-  } else if (loanMode === "rate") {
-    document.getElementById("loanResult").innerHTML =
-      `<h3>Loan Calculator Results (Rate Mode):</h3><p>Feature under development.</p>`;
-  }
-});
-document.querySelectorAll('input[name="loanMode"]').forEach(radio => {
-  radio.addEventListener("change", function() {
-    const mode = this.value;
+
+// Use button-based selection for loan mode
+document.querySelectorAll('.loan-mode-btn').forEach(button => {
+  button.addEventListener("click", function() {
+    document.querySelectorAll('.loan-mode-btn').forEach(btn => btn.classList.remove("active"));
+    this.classList.add("active");
+    const mode = this.getAttribute("data-mode");
     if (mode === "emi") {
       document.getElementById("loanAmountGroup").style.display = "block";
       document.getElementById("loanInterestGroup").style.display = "block";
@@ -614,6 +590,36 @@ document.querySelectorAll('input[name="loanMode"]').forEach(radio => {
       document.getElementById("loanEMIGroup").style.display = "block";
     }
   });
+});
+
+// Loan Calculator click handler
+document.getElementById("calcLoan").addEventListener("click", function() {
+  const activeLoanButton = document.querySelector('.loan-mode-btn.active');
+  if (!activeLoanButton) {
+    alert("Please select a loan mode.");
+    return;
+  }
+  const loanMode = activeLoanButton.getAttribute("data-mode");
+  if (loanMode === "emi") {
+    const loanAmount = parseFloat(document.getElementById("loanAmount").value);
+    const loanInterest = parseFloat(document.getElementById("loanInterest").value);
+    const loanTenure = parseFloat(document.getElementById("loanTenure").value);
+    const result = calculateLoanEMI(loanAmount, loanInterest, loanTenure);
+    document.getElementById("loanResult").innerHTML =
+      `<h3>Loan Calculator Results (EMI Mode):</h3>
+       <p>Monthly EMI: ${formatIndianCurrency(result.EMI)}</p>
+       <p>Total Interest Payable: ${formatIndianCurrency(result.totalInterest)}</p>
+       <p>Total Payment: ${formatIndianCurrency(result.totalPayment)}</p>`;
+    simulateLoanEMI(loanAmount, loanInterest, loanTenure);
+  } else if (loanMode === "tenure") {
+    document.getElementById("loanResult").innerHTML =
+      `<h3>Loan Calculator Results (Tenure Mode):</h3><p>Feature under development.</p>`;
+    document.getElementById("loanChart").style.display = "none";
+  } else if (loanMode === "rate") {
+    document.getElementById("loanResult").innerHTML =
+      `<h3>Loan Calculator Results (Rate Mode):</h3><p>Feature under development.</p>`;
+    document.getElementById("loanChart").style.display = "none";
+  }
 });
 
 // ====================================

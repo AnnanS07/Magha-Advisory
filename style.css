@@ -133,7 +133,7 @@ canvas {
   margin-top: 15px;
 }
 
-/* SWP Doughnut Chart styling: increased size and no border */
+/* SWP Doughnut Chart styling */
 #swpPieChart {
   max-width: 300px;
   max-height: 300px;
