@@ -345,7 +345,7 @@ function calculateSWP(navData, startDateStr, endDateStr, initialPortfolio, withd
     currentDate.setMonth(currentDate.getMonth() + 1);
     monthCount++;
     const currentNAV = getNAVForDate(navData, formatDate(currentDate));
-    // First, grow portfolio by the NAV ratio, then subtract withdrawal.
+    // Grow portfolio by NAV ratio, then subtract withdrawal.
     portfolio = portfolio * (currentNAV / previousNAV) - withdrawal;
     previousNAV = currentNAV;
   }
@@ -476,7 +476,7 @@ document.getElementById("calcLumpsum").addEventListener("click", function () {
 });
 
 // ====================================
-// Goal Based Planner Calculator (Independent)
+// Goal Based Planner Calculator
 // ====================================
 document.getElementById("calcGoal").addEventListener("click", function () {
   const goalOption = document.querySelector(".goal-option-btn.active").getAttribute("data-option");
@@ -490,12 +490,17 @@ document.getElementById("calcGoal").addEventListener("click", function () {
       const requiredLumpsum = targetAmount / Math.pow(1 + goalReturn, years);
       resultHTML += `<p>Required Lumpsum Investment: ${formatIndianCurrency(requiredLumpsum)}</p>`;
     } else {
+      // SIP mode with optional step-up percentage
       const n = years * 12;
       const r = goalReturn / 12;
       const factor = ((Math.pow(1 + r, n) - 1) / r) * (1 + r);
-      const requiredSIP = targetAmount / factor;
+      let requiredSIP = targetAmount / factor;
       const stepUp = parseFloat(document.getElementById("goalStepUpPercent").value) || 0;
-      resultHTML += `<p>Required Monthly SIP (with ${stepUp}% step-up if applied): ${formatIndianCurrency(requiredSIP)}</p>`;
+      // For a step-up SIP, you might adjust the calculation or simply show the base SIP with a note.
+      resultHTML += `<p>Required Monthly SIP (base value): ${formatIndianCurrency(requiredSIP)}</p>`;
+      if (stepUp > 0) {
+        resultHTML += `<p>Note: A step-up of ${stepUp}% per year is optional and can further reduce the required base SIP.</p>`;
+      }
     }
   } else if (goalOption === "time") {
     if (document.getElementById("investmentMode").value === "lumpsum") {
@@ -516,8 +521,8 @@ document.getElementById("calcGoal").addEventListener("click", function () {
   }
   document.getElementById("goalResult").innerHTML = resultHTML;
 });
-  
-// Dynamic UI for Goal Based Planner Buttons
+
+// Show/hide sections for goal-based planner
 document.addEventListener("DOMContentLoaded", function() {
   const goalButtons = document.querySelectorAll(".goal-option-btn");
   goalButtons.forEach(btn => {
@@ -540,12 +545,84 @@ document.addEventListener("DOMContentLoaded", function() {
       }
     });
   });
+  // Listen to changes in investment mode to toggle step-up SIP field.
+  document.getElementById("investmentMode").addEventListener("change", function() {
+    document.getElementById("goalSipInputs").style.display = this.value === "sip" ? "block" : "none";
+  });
+});
+
+// ====================================
+// Retirement Planner Calculator
+// ====================================
+function calculateRetirementCorpus(currentSavings, monthlyContribution, years, stepUp, annualReturn, inflationRate) {
+  const n = years * 12;
+  const r = annualReturn / 100 / 12;
+  let corpusFromSavings = currentSavings * Math.pow(1 + r, n);
+  let corpusFromContributions = 0;
+  for (let m = 0; m < n; m++) {
+    let yearsPassed = Math.floor(m / 12);
+    let contribution = monthlyContribution * Math.pow(1 + (stepUp / 100), yearsPassed);
+    corpusFromContributions += contribution * Math.pow(1 + r, n - m);
+  }
+  let totalCorpus = corpusFromSavings + corpusFromContributions;
+  if (inflationRate) {
+    totalCorpus = totalCorpus / Math.pow(1 + (inflationRate / 100) / 12, n);
+  }
+  return totalCorpus;
+}
+document.getElementById("calcRetirement").addEventListener("click", function() {
+  const currentAge = parseFloat(document.getElementById("currentAge").value);
+  const retirementAge = parseFloat(document.getElementById("retirementAge").value);
+  const currentSavings = parseFloat(document.getElementById("currentSavingsRet").value);
+  const monthlyContribution = parseFloat(document.getElementById("monthlyContributionRet").value);
+  const stepUp = parseFloat(document.getElementById("retStepUp").value) || 0;
+  const annualReturn = parseFloat(document.getElementById("retAnnualReturn").value);
+  const inflationRate = parseFloat(document.getElementById("retInflationRate").value) || 0;
+  const years = retirementAge - currentAge;
+  const corpus = calculateRetirementCorpus(currentSavings, monthlyContribution, years, stepUp, annualReturn, inflationRate);
+  document.getElementById("retirementResult").innerHTML =
+    `<h3>Retirement Planner Results:</h3>
+     <p>Estimated Corpus at Retirement: ${formatIndianCurrency(corpus.toFixed(2))}</p>`;
+});
+
+// ====================================
+// Children Education Planner Calculator
+// ====================================
+function calculateEducationPlanner(childAge, eduAge, currentCost, inflationRate, monthlyContribution, stepUp, annualReturn, currentSavings) {
+  const years = eduAge - childAge;
+  const futureCost = currentCost * Math.pow(1 + inflationRate / 100, years);
+  const n = years * 12;
+  const r = annualReturn / 100 / 12;
+  let futureSavings = currentSavings * Math.pow(1 + r, n);
+  let futureContributions = 0;
+  for (let m = 0; m < n; m++) {
+    let yearsPassed = Math.floor(m / 12);
+    let contribution = monthlyContribution * Math.pow(1 + (stepUp / 100), yearsPassed);
+    futureContributions += contribution * Math.pow(1 + r, n - m);
+  }
+  const totalCorpus = futureSavings + futureContributions;
+  return { futureCost, totalCorpus, gap: Math.max(0, futureCost - totalCorpus) };
+}
+document.getElementById("calcEducation").addEventListener("click", function() {
+  const childAge = parseFloat(document.getElementById("childAge").value);
+  const eduAge = parseFloat(document.getElementById("eduAge").value);
+  const currentCost = parseFloat(document.getElementById("currentCostEdu").value);
+  const inflationRate = parseFloat(document.getElementById("eduInflationRate").value) || 0;
+  const monthlyContribution = parseFloat(document.getElementById("monthlyContributionEdu").value);
+  const stepUp = parseFloat(document.getElementById("eduStepUp").value) || 0;
+  const annualReturn = parseFloat(document.getElementById("eduAnnualReturn").value);
+  const currentSavings = parseFloat(document.getElementById("currentSavingsEdu").value);
+  const { futureCost, totalCorpus, gap } = calculateEducationPlanner(childAge, eduAge, currentCost, inflationRate, monthlyContribution, stepUp, annualReturn, currentSavings);
+  document.getElementById("educationResult").innerHTML =
+    `<h3>Children Education Planner Results:</h3>
+     <p>Estimated Cost at Education Age: ${formatIndianCurrency(futureCost.toFixed(2))}</p>
+     <p>Future Value of Savings & Contributions: ${formatIndianCurrency(totalCorpus.toFixed(2))}</p>
+     <p>Additional Corpus Needed: ${formatIndianCurrency(gap.toFixed(2))}</p>`;
 });
 
 // ====================================
 // Loan Calculator
 // ====================================
-// Define helper functions for loan calculation
 function calculateLoanEMI(loanAmount, annualInterestRate, tenureYears) {
   const r = annualInterestRate / 100 / 12;
   const n = tenureYears * 12;
@@ -566,8 +643,6 @@ function simulateLoanEMI(loanAmount, annualInterestRate, tenureYears) {
   }
   updateLoanChart(labels, dataPoints);
 }
-
-// Use button-based selection for loan mode
 document.querySelectorAll('.loan-mode-btn').forEach(button => {
   button.addEventListener("click", function() {
     document.querySelectorAll('.loan-mode-btn').forEach(btn => btn.classList.remove("active"));
@@ -591,8 +666,6 @@ document.querySelectorAll('.loan-mode-btn').forEach(button => {
     }
   });
 });
-
-// Loan Calculator click handler
 document.getElementById("calcLoan").addEventListener("click", function() {
   const activeLoanButton = document.querySelector('.loan-mode-btn.active');
   if (!activeLoanButton) {
