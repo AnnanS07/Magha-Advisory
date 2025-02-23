@@ -17,7 +17,7 @@ function parseDate(str) {
 }
 function formatDate(date) {
   if (!date || isNaN(date.getTime())) return "";
-  return date.toISOString().split('T')[0];
+  return date.toISOString().split("T")[0];
 }
 function convertAPIDate(apiDateStr) {
   if (!apiDateStr || typeof apiDateStr !== "string") return "";
@@ -45,7 +45,7 @@ function formatIndianCurrency(num) {
   let parts = x.split(".");
   let lastThree = parts[0].slice(-3);
   let otherNumbers = parts[0].slice(0, -3);
-  if(otherNumbers !== "") {
+  if (otherNumbers !== "") {
     lastThree = "," + lastThree;
   }
   let formatted = otherNumbers.replace(/\B(?=(\d{2})+(?!\d))/g, ",") + lastThree;
@@ -69,10 +69,7 @@ function updateSIPChart(labels, investedData, portfolioData) {
     },
     options: {
       scales: { 
-        x: { 
-          ticks: { autoSkip: true, maxTicksLimit: 12, color: "#222" },
-          grid: { color: "#ccc" }
-        },
+        x: { ticks: { autoSkip: true, maxTicksLimit: 12, color: "#222" }, grid: { color: "#ccc" } },
         y: { ticks: { color: "#222" }, grid: { color: "#ccc" } }
       },
       plugins: { legend: { labels: { color: "#222" } } }
@@ -93,10 +90,7 @@ function updateLumpsumChart(labels, portfolioData) {
     },
     options: {
       scales: { 
-        x: { 
-          ticks: { autoSkip: true, maxTicksLimit: 12, color: "#222" },
-          grid: { color: "#ccc" }
-        },
+        x: { ticks: { autoSkip: true, maxTicksLimit: 12, color: "#222" }, grid: { color: "#ccc" } },
         y: { ticks: { color: "#222" }, grid: { color: "#ccc" } }
       },
       plugins: { legend: { labels: { color: "#222" } } }
@@ -153,26 +147,80 @@ function updateSWPPieChart(totalWithdrawals, finalPortfolio) {
 }
 
 // ====================================
-// Mutual Fund List & Filtering
+// Mutual Fund House Names Feature
+// ====================================
+// Fallback extractor for fund house from scheme name
+function extractFundHouse(schemeName) {
+  const commonFundHouses = [
+    "HDFC", "ICICI", "SBI", "Axis", "Kotak", "Aditya Birla",
+    "Nippon", "UTI", "DSP", "IDFC", "Tata", "L&T", "Motilal Oswal", "Franklin Templeton"
+  ];
+  for (let house of commonFundHouses) {
+    if (schemeName.toLowerCase().includes(house.toLowerCase())) {
+      return house;
+    }
+  }
+  return "Other";
+}
+
+// Extract unique mutual fund house names from API data using meta.fund_house
+function getUniqueFundHouses(data) {
+  const houses = data.map(fund => {
+    const schemeName = fund.schemeName || (fund.meta && fund.meta.scheme_name) || "";
+    // Use meta.fund_house if available; otherwise, extract from schemeName
+    return (fund.meta && fund.meta.fund_house) ? fund.meta.fund_house : extractFundHouse(schemeName);
+  }).filter(house => house && house.trim() !== "");
+  return Array.from(new Set(houses)).sort();
+}
+
+// ====================================
+// Mutual Fund List, House Filtering & Selection
 // ====================================
 function populateFundList() {
   fetch("https://api.mfapi.in/mf")
     .then(response => response.json())
     .then(data => {
-      allFunds = data.map(fund => {
-        let schemeName = fund.schemeName || (fund.meta && fund.meta.scheme_name);
-        let schemeCode = fund.schemeCode || (fund.meta && fund.meta.scheme_code);
-        return { schemeName, schemeCode };
-      }).filter(fund => fund.schemeName && fund.schemeCode);
+      // Build allFunds array using meta data or fallback extraction
+      allFunds = data
+        .map(fund => {
+          let schemeName = fund.schemeName || (fund.meta && fund.meta.scheme_name);
+          let schemeCode = fund.schemeCode || (fund.meta && fund.meta.scheme_code);
+          let fundHouse = (fund.meta && fund.meta.fund_house) || extractFundHouse(schemeName);
+          return { schemeName, schemeCode, fundHouse };
+        })
+        .filter(fund => fund.schemeName && fund.schemeCode);
+      
+      // Get unique fund houses from the raw data
+      const uniqueHouses = getUniqueFundHouses(data);
+      populateFundHouseSelect(uniqueHouses);
+      
       filterFundList("");
     })
     .catch(err => console.error("Error populating fund list:", err));
 }
 document.addEventListener("DOMContentLoaded", populateFundList);
+
+// Populate the dropdown using the provided list of fund houses
+function populateFundHouseSelect(houses) {
+  const select = document.getElementById("fundHouseSelect");
+  select.innerHTML = '<option value="All">All</option>';
+  houses.forEach(house => {
+    const option = document.createElement("option");
+    option.value = house;
+    option.textContent = house;
+    select.appendChild(option);
+  });
+}
+
 function filterFundList(query) {
   const fundList = document.getElementById("fundList");
   fundList.innerHTML = "";
-  const filtered = allFunds.filter(fund => fund.schemeName.toLowerCase().includes(query.toLowerCase()));
+  const selectedHouse = document.getElementById("fundHouseSelect").value;
+  const filtered = allFunds.filter(fund => {
+    const matchesQuery = fund.schemeName.toLowerCase().includes(query.toLowerCase());
+    const matchesHouse = selectedHouse === "All" || fund.fundHouse === selectedHouse;
+    return matchesQuery && matchesHouse;
+  });
   const limited = filtered.slice(0, 10);
   limited.forEach(fund => {
     const option = document.createElement("option");
@@ -181,9 +229,14 @@ function filterFundList(query) {
     fundList.appendChild(option);
   });
 }
+
 document.getElementById("fundNameInput").addEventListener("input", function() {
   filterFundList(this.value);
 });
+document.getElementById("fundHouseSelect").addEventListener("change", function() {
+  filterFundList(document.getElementById("fundNameInput").value);
+});
+
 function getSelectedFundId() {
   const input = document.getElementById("fundNameInput");
   const datalist = document.getElementById("fundList");
@@ -205,7 +258,7 @@ function getSelectedFundId() {
 // ====================================
 function fetchHistoricalData(fundId) {
   const cacheKey = `historicalData_${fundId}`;
-  const today = new Date().toISOString().split('T')[0];
+  const today = new Date().toISOString().split("T")[0];
   const cached = localStorage.getItem(cacheKey);
   if (cached) {
     const cachedObj = JSON.parse(cached);
@@ -250,19 +303,6 @@ document.getElementById("fundNameInput").addEventListener("change", function () 
   const fundId = getSelectedFundId();
   if (fundId) fetchLatestNAV(fundId);
 });
-
-// ====================================
-// Step-Up Helper
-// ====================================
-function getAnniversaryCount(startDate, currentDate) {
-  let count = 0;
-  let anniversary = new Date(startDate);
-  while (anniversary <= currentDate) {
-    count++;
-    anniversary.setFullYear(anniversary.getFullYear() + 1);
-  }
-  return count - 1;
-}
 
 // ====================================
 // SIP Calculator
@@ -345,7 +385,6 @@ function calculateSWP(navData, startDateStr, endDateStr, initialPortfolio, withd
     currentDate.setMonth(currentDate.getMonth() + 1);
     monthCount++;
     const currentNAV = getNAVForDate(navData, formatDate(currentDate));
-    // Grow portfolio by NAV ratio, then subtract withdrawal.
     portfolio = portfolio * (currentNAV / previousNAV) - withdrawal;
     previousNAV = currentNAV;
   }
@@ -407,7 +446,7 @@ function calculateLumpsum(navData, startDateStr, endDateStr, lumpsumAmount) {
     returnPct: returnPct.toFixed(2)
   };
 }
-function updateLumpsumChart(navData, startDateStr, endDateStr, lumpsumAmount) {
+function updateLumpsumChartWrapper(navData, startDateStr, endDateStr, lumpsumAmount) {
   let startDate = parseDate(startDateStr);
   let endDate = parseDate(endDateStr);
   const dates = [];
@@ -417,38 +456,11 @@ function updateLumpsumChart(navData, startDateStr, endDateStr, lumpsumAmount) {
   let units = lumpsumAmount / startNAV;
   while (currentDate <= endDate) {
     const dateStr = formatDate(currentDate);
-    const navValue = getNAVForDate(navData, dateStr);
     dates.push(dateStr);
-    portfolioArr.push((units * navValue).toFixed(2));
+    portfolioArr.push((units * getNAVForDate(navData, dateStr)).toFixed(2));
     currentDate.setMonth(currentDate.getMonth() + 1);
   }
-  const ctx = document.getElementById("lumpsumChart").getContext("2d");
-  if (lumpsumChart) lumpsumChart.destroy();
-  lumpsumChart = new Chart(ctx, {
-    type: "line",
-    data: {
-      labels: dates,
-      datasets: [{
-        label: "Portfolio Value (₹)",
-        data: portfolioArr,
-        borderColor: "#FF6600",
-        backgroundColor: "rgba(255,102,0,0.2)",
-        fill: false,
-        tension: 0.1
-      }]
-    },
-    options: {
-      scales: { 
-        x: { 
-          ticks: { autoSkip: true, maxTicksLimit: 12, color: "#222" },
-          grid: { color: "#ccc" }
-        },
-        y: { ticks: { color: "#222" }, grid: { color: "#ccc" } }
-      },
-      plugins: { legend: { labels: { color: "#222" } } }
-    }
-  });
-  document.getElementById("lumpsumChart").style.display = "block";
+  updateLumpsumChart(dates, portfolioArr);
 }
 document.getElementById("calcLumpsum").addEventListener("click", function () {
   const fundId = getSelectedFundId();
@@ -467,7 +479,7 @@ document.getElementById("calcLumpsum").addEventListener("click", function () {
          <p>Final Value: ${formatIndianCurrency(result.finalValue)}</p>
          <p>CAGR: ${result.CAGR}%</p>
          <p>Return (%): ${result.returnPct}%</p>`;
-      updateLumpsumChart(navData, startDate, endDate, lumpsumAmount);
+      updateLumpsumChartWrapper(navData, startDate, endDate, lumpsumAmount);
     })
     .catch(err => {
       console.error("Error fetching historical NAV data for Lumpsum:", err);
@@ -490,16 +502,14 @@ document.getElementById("calcGoal").addEventListener("click", function () {
       const requiredLumpsum = targetAmount / Math.pow(1 + goalReturn, years);
       resultHTML += `<p>Required Lumpsum Investment: ${formatIndianCurrency(requiredLumpsum)}</p>`;
     } else {
-      // SIP mode with optional step-up percentage
       const n = years * 12;
       const r = goalReturn / 12;
       const factor = ((Math.pow(1 + r, n) - 1) / r) * (1 + r);
       let requiredSIP = targetAmount / factor;
       const stepUp = parseFloat(document.getElementById("goalStepUpPercent").value) || 0;
-      // For a step-up SIP, you might adjust the calculation or simply show the base SIP with a note.
       resultHTML += `<p>Required Monthly SIP (base value): ${formatIndianCurrency(requiredSIP)}</p>`;
       if (stepUp > 0) {
-        resultHTML += `<p>Note: A step-up of ${stepUp}% per year is optional and can further reduce the required base SIP.</p>`;
+        resultHTML += `<p>Note: A step-up of ${stepUp}% per year is optional and may reduce the required base SIP.</p>`;
       }
     }
   } else if (goalOption === "time") {
@@ -521,8 +531,6 @@ document.getElementById("calcGoal").addEventListener("click", function () {
   }
   document.getElementById("goalResult").innerHTML = resultHTML;
 });
-
-// Show/hide sections for goal-based planner
 document.addEventListener("DOMContentLoaded", function() {
   const goalButtons = document.querySelectorAll(".goal-option-btn");
   goalButtons.forEach(btn => {
@@ -545,7 +553,6 @@ document.addEventListener("DOMContentLoaded", function() {
       }
     });
   });
-  // Listen to changes in investment mode to toggle step-up SIP field.
   document.getElementById("investmentMode").addEventListener("change", function() {
     document.getElementById("goalSipInputs").style.display = this.value === "sip" ? "block" : "none";
   });
@@ -702,6 +709,6 @@ document.querySelectorAll(".toggle-btn").forEach(btn => {
   btn.addEventListener("click", function() {
     const targetId = this.getAttribute("data-target");
     const content = document.getElementById(targetId);
-    content.style.display = (content.style.display === "block") ? "none" : "block";
+    content.style.display = content.style.display === "block" ? "none" : "block";
   });
 });
